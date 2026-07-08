@@ -1,0 +1,13 @@
+{
+  "name": "mhz-bot-zap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Webhook Meta/WhatsApp com persistência em Postgres (Supabase), pronto para deploy na Vercel.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"no tests\" && exit 0"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
