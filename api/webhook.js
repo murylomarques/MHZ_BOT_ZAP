@@ -75,7 +75,7 @@ async function processMessages(value) {
     });
 
     try {
-      await handleConversation({ waId, contactId, msg });
+      await handleConversation({ waId, contactId, msg, profileName: profileByWaId.get(waId) });
     } catch (err) {
       console.error('Erro ao processar conversa do bot:', err);
     }

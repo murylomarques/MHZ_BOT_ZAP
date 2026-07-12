@@ -12,13 +12,13 @@ Webhook para receber eventos do WhatsApp (Meta/Cloud API) e armazenar mensagens 
 
 ## Bot de atendimento
 
-Quando alguém manda uma saudação (oi, bom dia, boa tarde, etc.), o bot responde e oferece um menu com duas opções:
+Quando alguém manda uma saudação (oi, bom dia, boa tarde, etc.), o bot responde pelo nome salvo no contato do WhatsApp (quando disponível) e oferece um menu com duas opções:
 
 1. **Contratar internet** — encaminha para um consultor humano.
 2. **Retirar equipamento** — inicia o agendamento:
-   1. Escolha da data (hoje até 3 dias à frente)
-   2. Escolha do período (manhã 08h-12h ou tarde 13h-18h)
-   3. Confirmação do endereço de retirada
+   1. Escolha da data (hoje até 3 dias à frente) — dias/períodos que já passaram no fuso de São Paulo não aparecem como opção (ex: se já passou das 22h, hoje some da lista)
+   2. Escolha do período (manhã 08h-12h, tarde 13h-18h ou noite 19h-22h) — só mostra os períodos que ainda não passaram no dia escolhido
+   3. Confirmação do endereço de retirada — pode digitar (validado: precisa de rua, número, bairro e cidade) ou compartilhar a localização pelo WhatsApp; nesse caso o bot converte as coordenadas em endereço (reverse geocoding via Nominatim/OpenStreetMap) e sempre pergunta o número da casa/complemento, já que a localização sozinha não traz isso
    4. Telefone alternativo para contato
    5. Resumo e confirmação final
 
