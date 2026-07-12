@@ -33,3 +33,26 @@ create table if not exists message_status_updates (
 
 create index if not exists idx_messages_contact_id on messages(contact_id);
 create index if not exists idx_message_status_updates_wa_message_id on message_status_updates(wa_message_id);
+
+-- Estado da conversa do bot por contato (fluxo de atendimento/agendamento)
+create table if not exists conversation_states (
+  wa_id      text primary key,
+  state      text not null,
+  data       jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Agendamentos de retirada de equipamento confirmados pelo bot
+create table if not exists pickup_requests (
+  id            bigserial primary key,
+  contact_id    bigint references contacts(id),
+  wa_id         text not null,
+  pickup_date   date not null,
+  period        text not null,              -- manha, tarde
+  address       text not null,
+  contact_phone text not null,              -- telefone alternativo informado
+  status        text not null default 'pending', -- pending, done, cancelled
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists idx_pickup_requests_wa_id on pickup_requests(wa_id);

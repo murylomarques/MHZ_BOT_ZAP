@@ -4,6 +4,9 @@
   "private": true,
   "description": "Webhook Meta/WhatsApp com persistência em Postgres (Supabase), pronto para deploy na Vercel.",
   "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "echo \"no tests\" && exit 0"
   },

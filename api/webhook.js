@@ -1,4 +1,5 @@
 const { upsertContact, insertMessage, insertStatusUpdate } = require('../lib/db');
+const { handleConversation } = require('../lib/conversation');
 
 // Vercel serverless function: GET = verificação do webhook pela Meta, POST = eventos recebidos.
 module.exports = async (req, res) => {
@@ -72,6 +73,12 @@ async function processMessages(value) {
       waTimestamp: msg.timestamp ? new Date(Number(msg.timestamp) * 1000) : null,
       rawPayload: msg,
     });
+
+    try {
+      await handleConversation({ waId, contactId, msg });
+    } catch (err) {
+      console.error('Erro ao processar conversa do bot:', err);
+    }
   }
 }
 
