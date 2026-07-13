@@ -48,11 +48,34 @@ create table if not exists pickup_requests (
   contact_id    bigint references contacts(id),
   wa_id         text not null,
   pickup_date   date not null,
-  period        text not null,              -- manha, tarde
+  period        text not null,              -- manha, tarde, noite
   address       text not null,
   contact_phone text not null,              -- telefone alternativo informado
+  observacao    text,                       -- observação livre do cliente sobre a retirada
   status        text not null default 'pending', -- pending, done, cancelled
   created_at    timestamptz not null default now()
 );
 
 create index if not exists idx_pickup_requests_wa_id on pickup_requests(wa_id);
+
+-- Leads de retenção: cliente que ia cancelar/retirar equipamento mas topou
+-- tentar continuar (inclusive com contrato em nome de outra pessoa).
+create table if not exists retention_leads (
+  id              bigserial primary key,
+  contact_id      bigint references contacts(id),
+  wa_id           text not null,
+  nome_completo   text,
+  cpf             text,
+  rg              text,
+  data_nascimento text,
+  nome_mae        text,
+  email           text,
+  endereco        text,
+  plano           text,
+  telefone1       text,
+  telefone2       text,
+  status          text not null default 'pending', -- pending, contacted, converted, lost
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists idx_retention_leads_wa_id on retention_leads(wa_id);
