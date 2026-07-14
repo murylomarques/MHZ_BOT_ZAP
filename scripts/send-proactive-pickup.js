@@ -6,8 +6,9 @@
 
 require('dotenv').config();
 
-const { sendButtons } = require('../lib/whatsapp');
+const { sendText } = require('../lib/whatsapp');
 const { upsertContact, setConversationState } = require('../lib/db');
+const { askRetentionReason, BRAND } = require('../lib/conversation');
 
 async function main() {
   const waId = process.argv[2];
@@ -21,19 +22,14 @@ async function main() {
   await upsertContact(waId, name);
 
   const greeting = name ? `Olá, ${name}! 👋` : 'Olá! 👋';
-  const body =
-    `${greeting} Aqui é a equipe da MHZ. Vimos que você solicitou a retirada do equipamento de internet e ` +
-    `queríamos falar com você antes de seguir com isso.\n\n` +
-    `Conseguimos condições especiais para você continuar com a gente — inclusive dá pra fazer um novo contrato ` +
-    `no nome de outra pessoa (um familiar, por exemplo), caso isso ajude.\n\n` +
-    `Quer que a gente veja uma condição especial pra você continuar?`;
+  await sendText(
+    waId,
+    `${greeting} Aqui é a equipe da ${BRAND}. Vimos que você solicitou a retirada do equipamento de internet e ` +
+      `queríamos falar com você antes de seguir com isso.`
+  );
 
-  await sendButtons(waId, body, [
-    { id: 'retention_yes', title: 'Quero continuar' },
-    { id: 'retention_no', title: 'Retirar equipamento' },
-  ]);
-
-  await setConversationState(waId, 'AWAITING_RETENTION_OFFER', {});
+  await askRetentionReason(waId);
+  await setConversationState(waId, 'AWAITING_RETENTION_REASON', {});
 
   console.log(`Mensagem de contato ativo enviada para ${waId}.`);
   process.exit(0);
