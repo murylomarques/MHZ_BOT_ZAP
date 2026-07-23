@@ -1,0 +1,837 @@
+// MHZ Retira — schema do sistema novo.
+// As tabelas legadas do bot (contacts, messages, conversation_states,
+// pickup_requests, retention_leads, message_status_updates) são geridas por
+// sql/schema.sql e NÃO são gerenciadas pelo Prisma — não adicione @@map para
+// elas aqui. O código legado (lib/db.js) continua falando com elas via SQL cru.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Acesso
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  GESTOR
+  ATENDENTE
+}
+
+enum UserStatus {
+  ATIVO
+  BLOQUEADO
+}
+
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         UserRole
+  status       UserStatus @default(ATIVO)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+
+  cityPermissions    UserCityPermission[]
+  assignments        CaseAssignment[]
+  statusChanges      CaseStatusHistory[]  @relation("StatusChangedBy")
+  notes              CaseNote[]
+  importBatches      ImportBatch[]
+  campaignsCreated   BotCampaign[]
+  conversationsOwned Conversation[]
+  auditLogs          AuditLog[]
+  tasks              Task[]
+
+  @@map("app_users")
+}
+
+model UserCityPermission {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  city   String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, city])
+  @@map("user_city_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// Clientes / Ordens de serviço / Caso de retirada
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  phone        String
+  phoneAlt     String?  @map("phone_alt")
+  city         String
+  cityOriginal String?  @map("city_original")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  addresses     CustomerAddress[]
+  serviceOrders ServiceOrder[]
+
+  @@index([phone])
+  @@index([city])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String    @map("customer_id") @db.Uuid
+  kind        String    @default("original") // original | confirmado | corrigido
+  fullAddress String    @map("full_address")
+  latitude    Float?
+  longitude   Float?
+  geocodedAt  DateTime? @map("geocoded_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+model ServiceOrder {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId         String    @map("customer_id") @db.Uuid
+  saId               String    @unique @map("sa_id")
+  saNumber           String?   @map("sa_number")
+  woNumber           String?   @map("wo_number")
+  woScheduledDate    DateTime? @map("wo_scheduled_date") @db.Date
+  importBatchId      String?   @map("import_batch_id") @db.Uuid
+  phoneDuplicateFlag Boolean   @default(false) @map("phone_duplicate_flag")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id])
+  caseRecord  CaseRecord?
+
+  @@index([woNumber])
+  @@index([customerId])
+  @@map("service_orders")
+}
+
+enum CaseStatus {
+  IMPORTADO
+  PENDENTE_DISPARO
+  PROCESSANDO_DISPARO
+  MENSAGEM_ENVIADA
+  MENSAGEM_ENTREGUE
+  MENSAGEM_LIDA
+  AGUARDANDO_RESPOSTA
+  CLIENTE_RESPONDEU
+  ENDERECO_CONFIRMADO
+  ENDERECO_DIVERGENTE
+  ATENDIMENTO_HUMANO
+  EM_ATENDIMENTO
+  AGUARDANDO_AGENDAMENTO
+  AGENDADO
+  AGUARDANDO_ROTA
+  ROTA_PLANEJADA
+  ATRIBUIDO_MOTOBOY
+  EM_DESLOCAMENTO
+  EQUIPAMENTO_RETIRADO
+  RETIRADA_NAO_REALIZADA
+  CLIENTE_AUSENTE
+  ENDERECO_NAO_LOCALIZADO
+  CLIENTE_RECUSOU
+  CONTATO_INVALIDO
+  CANCELADO
+  CLIENTE_RETIDO
+  AGUARDANDO_BAIXA
+  BAIXA_PROCESSANDO
+  BAIXA_REALIZADA
+  ERRO_BAIXA
+  FINALIZADO
+}
+
+enum CasePriority {
+  BAIXA
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+enum StatusChangeOrigin {
+  BOT
+  ATENDENTE
+  GESTOR
+  INTEGRACAO
+  IMPORTACAO
+}
+
+model CaseRecord {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceOrderId String       @unique @map("service_order_id") @db.Uuid
+  status         CaseStatus   @default(IMPORTADO)
+  priority       CasePriority @default(NORMAL)
+  slaDueAt       DateTime?    @map("sla_due_at")
+  campaignId     String?      @map("campaign_id") @db.Uuid
+  lastContactAt  DateTime?    @map("last_contact_at")
+  humanReason    String?      @map("human_reason")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  serviceOrder  ServiceOrder        @relation(fields: [serviceOrderId], references: [id])
+  campaign      BotCampaign?        @relation(fields: [campaignId], references: [id])
+  assignment    CaseAssignment?
+  statusHistory CaseStatusHistory[]
+  tags          CaseTag[]
+  notes         CaseNote[]
+  botMessages   BotMessage[]
+  conversation  Conversation?
+  appointment   Appointment?
+  pickup        Pickup?
+  routeStops    RouteStop[]
+
+  @@index([status])
+  @@index([priority])
+  @@map("case_records")
+}
+
+model CaseAssignment {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId      String    @unique @map("case_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  releasedAt  DateTime? @map("released_at")
+  lockVersion Int       @default(0) @map("lock_version") // otimista, evita 2 atendentes assumirem o mesmo caso
+
+  caseRecord CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@map("case_assignments")
+}
+
+model CaseStatusHistory {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId          String             @map("case_id") @db.Uuid
+  fromStatus      CaseStatus?        @map("from_status")
+  toStatus        CaseStatus         @map("to_status")
+  origin          StatusChangeOrigin
+  reason          String?
+  note            String?
+  changedByUserId String?            @map("changed_by_user_id") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+
+  caseRecord    CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  changedByUser User?      @relation("StatusChangedBy", fields: [changedByUserId], references: [id])
+
+  @@index([caseId])
+  @@map("case_status_history")
+}
+
+model CaseTag {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId String @map("case_id") @db.Uuid
+  label  String
+
+  caseRecord CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, label])
+  @@map("case_tags")
+}
+
+model CaseNote {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId    String   @map("case_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  caseRecord CaseRecord @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@map("case_notes")
+}
+
+// ---------------------------------------------------------------------------
+// Importação
+// ---------------------------------------------------------------------------
+
+model ImportBatch {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileName            String    @map("file_name")
+  fileHash            String    @map("file_hash")
+  importedByUserId    String    @map("imported_by_user_id") @db.Uuid
+  totalRows           Int       @map("total_rows")
+  createdCount        Int       @default(0) @map("created_count")
+  updatedCount        Int       @default(0) @map("updated_count")
+  ignoredCount        Int       @default(0) @map("ignored_count")
+  invalidCount        Int       @default(0) @map("invalid_count")
+  duplicatePhoneCount Int       @default(0) @map("duplicate_phone_count")
+  duplicateSaCount    Int       @default(0) @map("duplicate_sa_count")
+  duplicateWoCount    Int       @default(0) @map("duplicate_wo_count")
+  unknownCityCount    Int       @default(0) @map("unknown_city_count")
+  invalidPhoneCount   Int       @default(0) @map("invalid_phone_count")
+  removedCount        Int       @default(0) @map("removed_count")
+  activeBeforeCount   Int       @default(0) @map("active_before_count")
+  activeAfterCount    Int       @default(0) @map("active_after_count")
+  errorMessage        String?   @map("error_message")
+  status              String    @default("PROCESSANDO") // PROCESSANDO | CONCLUIDO | ERRO
+  startedAt           DateTime  @default(now()) @map("started_at")
+  finishedAt          DateTime? @map("finished_at")
+
+  importedByUser User           @relation(fields: [importedByUserId], references: [id])
+  rows           ImportRow[]
+  errors         ImportError[]
+  serviceOrders  ServiceOrder[]
+
+  @@map("import_batches")
+}
+
+model ImportRow {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  importBatchId String @map("import_batch_id") @db.Uuid
+  rowNumber     Int    @map("row_number")
+  saId          String? @map("sa_id")
+  result        String // created | updated | ignored | invalid
+  rawData       Json   @map("raw_data")
+
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@map("import_rows")
+}
+
+model ImportError {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  importBatchId String @map("import_batch_id") @db.Uuid
+  rowNumber     Int    @map("row_number")
+  message       String
+
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@map("import_errors")
+}
+
+// ---------------------------------------------------------------------------
+// Bot — templates, campanhas, mensagens
+// ---------------------------------------------------------------------------
+
+model BotTemplate {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  internalName String   @map("internal_name")
+  hsmCode      String?  @map("hsm_code")
+  flowCode     String?  @map("flow_code")
+  previewText  String   @map("preview_text")
+  variables    Json     @default("[]")
+  active       Boolean  @default(true)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  campaigns BotCampaign[]
+
+  @@map("bot_templates")
+}
+
+enum CampaignStatus {
+  RASCUNHO
+  EM_EXECUCAO
+  PAUSADA
+  ENCERRADA
+}
+
+model BotCampaign {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  templateId      String?        @map("template_id") @db.Uuid
+  status          CampaignStatus @default(RASCUNHO)
+  cities          String[]       @default([])
+  maxSendPerRun   Int?           @map("max_send_per_run")
+  intervalSeconds Int?           @map("interval_seconds")
+  windowStart     String?        @map("window_start") // "08:00"
+  windowEnd       String?        @map("window_end")   // "20:00"
+  allowedWeekdays Int[]          @default([1, 2, 3, 4, 5]) @map("allowed_weekdays")
+  maxAttempts     Int            @default(3) @map("max_attempts")
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  template      BotTemplate?      @relation(fields: [templateId], references: [id])
+  createdByUser User              @relation(fields: [createdByUserId], references: [id])
+  items         BotCampaignItem[]
+  cases         CaseRecord[]
+  messages      BotMessage[]
+
+  @@map("bot_campaigns")
+}
+
+model BotCampaignItem {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String @map("campaign_id") @db.Uuid
+  caseId     String @map("case_id") @db.Uuid
+  status     String @default("PENDENTE") // PENDENTE | PROCESSANDO | ENVIADO | ERRO | IGNORADO | DUPLICADO
+  attempts   Int    @default(0)
+
+  campaign BotCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, caseId])
+  @@map("bot_campaign_items")
+}
+
+model BotMessage {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId       String?   @map("case_id") @db.Uuid
+  campaignId   String?   @map("campaign_id") @db.Uuid
+  provider     String    // meta_whatsapp | matrix_desktop
+  externalId   String?   @map("external_id") // wamid
+  direction    String    @default("outbound")
+  status       String    @default("PENDENTE") // PENDENTE | ENVIADO | ENTREGUE | LIDO | ERRO
+  errorCode    String?   @map("error_code")
+  errorMessage String?   @map("error_message")
+  sentAt       DateTime? @map("sent_at")
+  deliveredAt  DateTime? @map("delivered_at")
+  readAt       DateTime? @map("read_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  caseRecord CaseRecord?       @relation(fields: [caseId], references: [id])
+  campaign   BotCampaign?      @relation(fields: [campaignId], references: [id])
+  events     BotMessageEvent[]
+
+  @@index([caseId])
+  @@index([externalId])
+  @@map("bot_messages")
+}
+
+model BotMessageEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId  String   @map("message_id") @db.Uuid
+  eventType  String   @map("event_type") // sent | delivered | read | failed
+  rawPayload Json     @map("raw_payload")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  message BotMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("bot_message_events")
+}
+
+model BotWebhookEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider    String
+  eventType   String    @map("event_type")
+  rawPayload  Json      @map("raw_payload")
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("bot_webhook_events")
+}
+
+// ---------------------------------------------------------------------------
+// Atendimento
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId        String    @unique @map("case_id") @db.Uuid
+  ownerUserId   String?   @map("owner_user_id") @db.Uuid
+  queue         String    @default("NAO_ATRIBUIDO")
+  lastMessageAt DateTime? @map("last_message_at")
+  closedAt      DateTime? @map("closed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  caseRecord CaseRecord            @relation(fields: [caseId], references: [id])
+  ownerUser  User?                 @relation(fields: [ownerUserId], references: [id])
+  messages   ConversationMessage[]
+
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  sender         String   // bot | atendente | cliente
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("conversation_messages")
+}
+
+model QuickReply {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String
+  body      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("quick_replies")
+}
+
+// ---------------------------------------------------------------------------
+// Agenda
+// ---------------------------------------------------------------------------
+
+model Appointment {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId            String   @unique @map("case_id") @db.Uuid
+  date              DateTime @db.Date
+  windowStart       String   @map("window_start")
+  windowEnd         String   @map("window_end")
+  address           String
+  observation       String?
+  confirmedByClient Boolean  @default(false) @map("confirmed_by_client")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  caseRecord CaseRecord           @relation(fields: [caseId], references: [id])
+  history    AppointmentHistory[]
+
+  @@map("appointments")
+}
+
+model AppointmentHistory {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  appointmentId   String   @map("appointment_id") @db.Uuid
+  changedByUserId String?  @map("changed_by_user_id") @db.Uuid
+  changeType      String   @map("change_type") // criado | reagendado | cancelado
+  previousData    Json?    @map("previous_data")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("appointment_history")
+}
+
+model CityCapacityRule {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  city         String
+  weekday      Int    // 0-6
+  windowStart  String @map("window_start")
+  windowEnd    String @map("window_end")
+  maxPerWindow Int    @map("max_per_window")
+  maxPerDay    Int    @map("max_per_day")
+
+  @@unique([city, weekday, windowStart])
+  @@map("city_capacity_rules")
+}
+
+model BlockedDate {
+  id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  city   String?
+  date   DateTime @db.Date
+  reason String?
+
+  @@map("blocked_dates")
+}
+
+// ---------------------------------------------------------------------------
+// Logística — motoboys, rotas
+// ---------------------------------------------------------------------------
+
+enum CourierStatus {
+  ATIVO
+  INATIVO
+}
+
+model Courier {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  phone         String
+  document      String?
+  status        CourierStatus @default(ATIVO)
+  vehicleType   String?       @map("vehicle_type")
+  plate         String?
+  dailyCapacity Int?          @map("daily_capacity")
+  observation   String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  coverage CourierCoverage[]
+  routes   Route[]
+  pickups  Pickup[]
+
+  @@map("couriers")
+}
+
+model CourierCoverage {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierId String  @map("courier_id") @db.Uuid
+  city      String
+  district  String?
+
+  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@map("courier_coverage")
+}
+
+enum RouteStatus {
+  PLANEJADA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+model Route {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierId  String?     @map("courier_id") @db.Uuid
+  date       DateTime    @db.Date
+  status     RouteStatus @default(PLANEJADA)
+  startPoint Json?       @map("start_point") // {lat,lng}
+  endPoint   Json?       @map("end_point")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  courier Courier?       @relation(fields: [courierId], references: [id])
+  stops   RouteStop[]
+  history RouteHistory[]
+
+  @@map("routes")
+}
+
+model RouteStop {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routeId             String    @map("route_id") @db.Uuid
+  caseId              String    @map("case_id") @db.Uuid
+  stopOrder           Int       @map("stop_order")
+  estimatedArrivalAt  DateTime? @map("estimated_arrival_at")
+  estimatedDistanceKm Float?    @map("estimated_distance_km")
+  status              String    @default("PENDENTE") // PENDENTE | EM_ANDAMENTO | CONCLUIDA | NAO_REALIZADA
+
+  route      Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  caseRecord CaseRecord @relation(fields: [caseId], references: [id])
+
+  @@unique([routeId, caseId])
+  @@map("route_stops")
+}
+
+model RouteHistory {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routeId   String   @map("route_id") @db.Uuid
+  event     String
+  data      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@map("route_history")
+}
+
+// ---------------------------------------------------------------------------
+// Retirada
+// ---------------------------------------------------------------------------
+
+model Pickup {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId            String    @unique @map("case_id") @db.Uuid
+  courierId         String?   @map("courier_id") @db.Uuid
+  performedAt       DateTime? @map("performed_at")
+  performedByUserId String?   @map("performed_by_user_id") @db.Uuid
+  result            String?   // retirado | nao_realizada
+  observation       String?
+  latitude          Float?
+  longitude         Float?
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  caseRecord CaseRecord        @relation(fields: [caseId], references: [id])
+  courier    Courier?          @relation(fields: [courierId], references: [id])
+  attempts   PickupAttempt[]
+  equipment  PickupEquipment[]
+  proofs     PickupProof[]
+  closure    SystemClosure?
+
+  @@map("pickups")
+}
+
+model PickupAttempt {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pickupId  String   @map("pickup_id") @db.Uuid
+  reason    String   // cliente_ausente | endereco_incorreto | cliente_mudou | cliente_recusou | equipamento_nao_localizado | regiao_de_risco | problema_veiculo | cancelada | outros
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pickup Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+
+  @@map("pickup_attempts")
+}
+
+model PickupEquipment {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pickupId     String  @map("pickup_id") @db.Uuid
+  type         String  // ONU | ROTEADOR | MODEM | FONTE | CONTROLE | REPETIDOR | CABO | OUTROS
+  brand        String?
+  model        String?
+  serialNumber String? @map("serial_number")
+  macAddress   String? @map("mac_address")
+  assetTag     String? @map("asset_tag")
+  quantity     Int     @default(1)
+  condition    String?
+  observation  String?
+  photoUrl     String? @map("photo_url")
+
+  pickup Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+
+  @@map("pickup_equipment")
+}
+
+model PickupProof {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pickupId  String   @map("pickup_id") @db.Uuid
+  fileUrl   String   @map("file_url")
+  kind      String   @default("foto") // foto | assinatura | documento
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pickup Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+
+  @@map("pickup_proofs")
+}
+
+// ---------------------------------------------------------------------------
+// Baixa
+// ---------------------------------------------------------------------------
+
+enum ClosureStatus {
+  AGUARDANDO
+  PROCESSANDO
+  REALIZADA
+  ERRO
+  DIVERGENCIA
+}
+
+model SystemClosure {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pickupId          String        @unique @map("pickup_id") @db.Uuid
+  status            ClosureStatus @default(AGUARDANDO)
+  closureCode       String?       @map("closure_code")
+  performedAt       DateTime?     @map("performed_at")
+  performedByUserId String?       @map("performed_by_user_id") @db.Uuid
+  externalResponse  Json?         @map("external_response")
+  attempts          Int           @default(0)
+  lastError         String?       @map("last_error")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  pickup      Pickup           @relation(fields: [pickupId], references: [id])
+  attemptsLog ClosureAttempt[]
+
+  @@map("system_closures")
+}
+
+model ClosureAttempt {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  closureId String   @map("closure_id") @db.Uuid
+  success   Boolean
+  response  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  closure SystemClosure @relation(fields: [closureId], references: [id], onDelete: Cascade)
+
+  @@map("closure_attempts")
+}
+
+// ---------------------------------------------------------------------------
+// Suporte / plataforma
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model Task {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId    String?   @map("case_id") @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  title     String
+  dueAt     DateTime? @map("due_at")
+  doneAt    DateTime? @map("done_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("tasks")
+}
+
+model IntegrationConfig {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key            String   @unique
+  valueEncrypted String   @map("value_encrypted")
+  description    String?
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("integration_configs")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  beforeData Json?    @map("before_data")
+  afterData  Json?    @map("after_data")
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  origin     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key   String @id
+  value Json
+
+  @@map("system_settings")
+}
+
+model GeocodeCache {
+  addressHash String   @id @map("address_hash")
+  address     String
+  latitude    Float
+  longitude   Float
+  provider    String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("geocode_cache")
+}
+
+enum JobStatus {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+  ERRO
+}
+
+model Job {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        String    // dispatch_message | geocode_address | check_sla | ...
+  payload     Json
+  status      JobStatus @default(PENDENTE)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  runAfter    DateTime  @default(now()) @map("run_after")
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, runAfter])
+  @@map("jobs")
+}

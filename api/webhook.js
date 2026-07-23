@@ -1,5 +1,6 @@
 const { upsertContact, insertMessage, insertStatusUpdate } = require('../lib/db');
 const { handleConversation } = require('../lib/conversation');
+const { syncOutboundStatus, syncInboundMessage } = require('../lib/new-schema-sync');
 
 // Vercel serverless function: GET = verificação do webhook pela Meta, POST = eventos recebidos.
 module.exports = async (req, res) => {
@@ -79,6 +80,10 @@ async function processMessages(value) {
     } catch (err) {
       console.error('Erro ao processar conversa do bot:', err);
     }
+
+    // Aditivo: espelha a resposta no sistema novo (MHZ Retira), se o telefone
+    // tiver um caso aberto lá. Nunca deve afetar o fluxo do bot acima.
+    await syncInboundMessage(waId, body);
   }
 }
 
@@ -91,5 +96,9 @@ async function processStatuses(value) {
       waTimestamp: status.timestamp ? new Date(Number(status.timestamp) * 1000) : null,
       rawPayload: status,
     });
+
+    // Aditivo: se essa mensagem foi enviada pelo sistema novo (bot_messages),
+    // atualiza o status lá também. Nunca deve afetar o fluxo do bot acima.
+    await syncOutboundStatus(status.id, status.status, status);
   }
 }

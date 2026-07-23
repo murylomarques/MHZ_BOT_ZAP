@@ -1,3 +1,9 @@
 node_modules/
 .env
+.env.local
 .vercel
+.next/
+tsconfig.tsbuildinfo
+
+# Base com dados pessoais de clientes (LGPD) — não versionar.
+base_disparo_misto_*.csv
