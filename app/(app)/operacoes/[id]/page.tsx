@@ -4,6 +4,9 @@ import { getDispatchStage, DISPATCH_STAGE_LABELS } from "@/lib/server/status/dis
 import { notFound } from "next/navigation";
 import { AssignButton } from "./AssignButton";
 import { MarkDispatchedButton } from "./MarkDispatchedButton";
+import { CopyGroupTextButton } from "../CopyGroupTextButton";
+import { NotifiedToGroupToggle } from "../NotifiedToGroupToggle";
+import { buildGroupCopyText } from "@/lib/server/status/group-copy-text";
 import type { CaseStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +36,34 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   const { customer } = serviceOrder;
   const lastDispatchAt = caseRecord.botMessages[0]?.createdAt ?? null;
   const dispatchStage = getDispatchStage(caseRecord.status, lastDispatchAt);
+
+  // notified_to_group ainda não está no schema.prisma/client — SQL cru
+  // (ver comentário em app/api/cases/[id]/notified-to-group/route.ts).
+  const notifiedToGroup =
+    (
+      await prisma.$queryRaw<{ notified_to_group: boolean }[]>`
+        SELECT notified_to_group FROM case_records WHERE id = ${caseRecord.id}::uuid
+      `
+    )[0]?.notified_to_group ?? false;
+
+  const originalAddress = customer.addresses[0]?.fullAddress;
+  // Flag/copiar só aparecem depois que o cliente já escolheu o horário de
+  // retirada — ou seja, quando existe um Appointment (windowStart é
+  // obrigatório nele) — pedido explícito do usuário.
+  const showGroupActions = !!caseRecord.appointment && !!originalAddress;
+  const groupCopyText = showGroupActions
+    ? buildGroupCopyText({
+        city: customer.city,
+        saId: serviceOrder.saId,
+        customerName: customer.name,
+        phone: customer.phone,
+        originalAddress: originalAddress!,
+        appointmentAddress: caseRecord.appointment?.address,
+        observation: caseRecord.appointment?.observation,
+        windowStart: caseRecord.appointment?.windowStart,
+        date: caseRecord.appointment?.date,
+      })
+    : null;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
@@ -96,6 +127,15 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
             />
             <Field label="Janela" value={`${caseRecord.appointment.windowStart} - ${caseRecord.appointment.windowEnd}`} />
             <Field label="Endereço" value={caseRecord.appointment.address} />
+          </Section>
+        )}
+
+        {showGroupActions && groupCopyText && (
+          <Section title="Grupo de motoboys">
+            <div className="flex items-center justify-between gap-2">
+              <NotifiedToGroupToggle caseId={caseRecord.id} notified={notifiedToGroup} />
+              <CopyGroupTextButton text={groupCopyText} />
+            </div>
           </Section>
         )}
 

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/server/db/prisma";
 import { STATUS_LABELS } from "@/lib/server/status/labels";
 import { getDispatchStage, DISPATCH_STAGE_LABELS, type DispatchStage } from "@/lib/server/status/dispatch-stage";
+import { getBotFunnels, type FunnelResult } from "@/lib/server/status/bot-funnel";
+import { NudgeRespondedButton } from "./NudgeRespondedButton";
 import Link from "next/link";
 import type { CaseStatus } from "@prisma/client";
 
@@ -67,6 +69,8 @@ export default async function DashboardPage() {
     dispatchFunnelCount.set(stage, (dispatchFunnelCount.get(stage) ?? 0) + 1);
   }
 
+  const botFunnels = await getBotFunnels();
+
   const hasData = total > 0;
 
   return (
@@ -96,18 +100,21 @@ export default async function DashboardPage() {
             {CARD_GROUPS.map((group) => {
               const value = group.statuses.reduce((acc, s) => acc + (statusCount.get(s) ?? 0), 0);
               const qs = group.statuses.join(",");
+              const isRespostasRecebidas = group.title === "Respostas recebidas";
               return (
-                <Link
+                <div
                   key={group.title}
-                  href={`/operacoes?status=${qs}`}
                   className="rounded-xl border p-4 transition hover:shadow-sm"
                   style={{ borderColor: "var(--border)", background: "var(--surface)" }}
                 >
-                  <div className="text-2xl font-semibold">{value.toLocaleString("pt-BR")}</div>
-                  <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                    {group.title}
-                  </div>
-                </Link>
+                  <Link href={`/operacoes?status=${qs}`}>
+                    <div className="text-2xl font-semibold">{value.toLocaleString("pt-BR")}</div>
+                    <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                      {group.title}
+                    </div>
+                  </Link>
+                  {isRespostasRecebidas && <NudgeRespondedButton count={value} />}
+                </div>
               );
             })}
           </div>
@@ -132,6 +139,11 @@ export default async function DashboardPage() {
                 </Link>
               ))}
             </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <FunnelCard title="Funil de retirada (bot)" funnel={botFunnels.retirada} />
+            <FunnelCard title="Funil de retenção (bot)" funnel={botFunnels.retencao} />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -174,6 +186,46 @@ export default async function DashboardPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function FunnelCard({ title, funnel }: { title: string; funnel: FunnelResult }) {
+  const base = funnel.stages[0]?.count || 1;
+  return (
+    <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+      <div className="text-sm font-medium mb-1">{title}</div>
+      <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+        % de disparados que chegaram em cada etapa — em vermelho, onde tem mais abandono. Passos
+        intermediários (entre respondeu e o resultado final) só começam a contar a partir de agora,
+        em conversas novas — os totais de respondeu/resultado final já refletem o histórico completo.
+      </p>
+      <div className="space-y-1.5">
+        {funnel.stages.map((stage, i) => {
+          const isWorstDrop = i === funnel.worstDropIndex;
+          const pctOfBase = Math.round((stage.count / base) * 100);
+          return (
+            <div key={stage.key} className="flex items-center gap-2 text-sm">
+              <div className="w-52 truncate shrink-0" style={{ color: isWorstDrop ? "var(--danger, #e05252)" : "var(--text-muted)" }}>
+                {stage.label}
+              </div>
+              <div className="flex-1 h-2 rounded-full" style={{ background: "var(--border)" }}>
+                <div
+                  className="h-2 rounded-full"
+                  style={{
+                    width: `${Math.max(2, pctOfBase)}%`,
+                    background: isWorstDrop ? "var(--danger, #e05252)" : "var(--brand)",
+                  }}
+                />
+              </div>
+              <div className="w-14 text-right shrink-0">{stage.count.toLocaleString("pt-BR")}</div>
+              <div className="w-16 text-right shrink-0" style={{ color: isWorstDrop ? "var(--danger, #e05252)" : "var(--text-muted)" }}>
+                {i === 0 ? "" : `-${stage.dropFromPrevious}%`}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
