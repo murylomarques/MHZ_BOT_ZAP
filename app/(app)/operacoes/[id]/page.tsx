@@ -51,6 +51,9 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
   // retirada — ou seja, quando existe um Appointment (windowStart é
   // obrigatório nele) — pedido explícito do usuário.
   const showGroupActions = !!caseRecord.appointment && !!originalAddress;
+  // Parcial = escolheu dia/período mas não confirmou o endereço — appointment
+  // já existe (endereço do cadastro), só falta o cliente responder.
+  const isPartialSchedule = !!caseRecord.appointment && !caseRecord.appointment.confirmedByClient;
   const groupCopyText = showGroupActions
     ? buildGroupCopyText({
         city: customer.city,
@@ -62,6 +65,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
         observation: caseRecord.appointment?.observation,
         windowStart: caseRecord.appointment?.windowStart,
         date: caseRecord.appointment?.date,
+        confirmedByClient: caseRecord.appointment?.confirmedByClient,
       })
     : null;
 
@@ -121,6 +125,11 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
 
         {caseRecord.appointment && (
           <Section title="Agendamento">
+            {isPartialSchedule && (
+              <div className="text-xs font-medium" style={{ color: "var(--warning, #b8860b)" }}>
+                Parcial — cliente escolheu dia/período mas não confirmou o endereço (usando o do cadastro)
+              </div>
+            )}
             <Field
               label="Data"
               value={caseRecord.appointment.date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}

@@ -223,6 +223,7 @@ export default async function OperacoesPage({
               <th className="p-3">Atualizado em</th>
               <th className="p-3">Grupo</th>
               <th className="p-3">Copiar</th>
+              <th className="p-3">Parcial</th>
               <th className="p-3">Cidade</th>
               <th className="p-3">Data agendada</th>
             </tr>
@@ -234,6 +235,9 @@ export default async function OperacoesPage({
               // horário de retirada — ou seja, quando existe um Appointment
               // (windowStart é obrigatório nele) — pedido explícito do usuário.
               const showGroupActions = !!c.appointment && !!originalAddress;
+              // Parcial = escolheu dia/período mas não confirmou o endereço —
+              // appointment já existe (endereço do cadastro), só falta o cliente responder.
+              const isPartial = !!c.appointment && !c.appointment.confirmedByClient;
               const groupCopyText = showGroupActions
                 ? buildGroupCopyText({
                     city: c.serviceOrder.customer.city,
@@ -245,6 +249,7 @@ export default async function OperacoesPage({
                     observation: c.appointment?.observation,
                     windowStart: c.appointment?.windowStart,
                     date: c.appointment?.date,
+                    confirmedByClient: c.appointment?.confirmedByClient,
                   })
                 : null;
               return (
@@ -274,6 +279,13 @@ export default async function OperacoesPage({
                     )}
                   </td>
                   <td className="p-3">{groupCopyText ? <CopyGroupTextButton text={groupCopyText} /> : "-"}</td>
+                  <td className="p-3">
+                    {isPartial ? (
+                      <span style={{ color: "var(--warning, #b8860b)" }}>Parcial</span>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td className="p-3">{c.serviceOrder.customer.city}</td>
                   <td className="p-3">
                     {c.appointment
@@ -285,7 +297,7 @@ export default async function OperacoesPage({
             })}
             {cases.length === 0 && (
               <tr>
-                <td colSpan={13} className="p-6 text-center" style={{ color: "var(--text-muted)" }}>
+                <td colSpan={14} className="p-6 text-center" style={{ color: "var(--text-muted)" }}>
                   Nenhum caso encontrado com esses filtros.
                 </td>
               </tr>
