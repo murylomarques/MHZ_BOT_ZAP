@@ -68,14 +68,17 @@ async function countByStep(steps: string[]): Promise<Map<string, number>> {
 }
 
 // bot_funnel_events só existe a partir de agora — casos antigos que já
-// responderam/agendaram/foram retidos antes dessa instrumentação existir
-// ficariam com contagem 0 nos marcos abaixo. Como esses 3 marcos têm um
-// equivalente confiável em case_status_history (independe de quando o
-// evento foi logado), usamos o maior valor entre as duas fontes.
+// responderam antes dessa instrumentação existir ficariam com contagem 0 no
+// topo do funil. Só fazemos esse merge com o histórico para "Respondeu"
+// (topo — não tem etapa anterior pra comparar, então não quebra a
+// monotonicidade). NÃO fazer isso pras etapas finais (agendou/reteve):
+// case_status_history tem TODO agendamento histórico (inclusive de antes da
+// instrumentação, ou feito fora do fluxo do bot), o que pode facilmente
+// superar a contagem das etapas do meio (só contam conversas novas) e fazer
+// o funil "crescer" no final — exatamente o bug visto (Confirmou > Informou
+// observação). As etapas finais ficam só com bot_funnel_events mesmo.
 const HISTORICAL_STATUS_FOR_STEP: Record<string, string> = {
   AWAITING_RETENTION_OFFER: "CLIENTE_RESPONDEU",
-  RETIRADA_CONFIRMADA: "AGENDADO",
-  RETENCAO_CONCLUIDA: "CLIENTE_RETIDO",
 };
 
 async function countHistoricalReached(statuses: string[]): Promise<Map<string, number>> {
@@ -97,15 +100,20 @@ async function countHistoricalReached(statuses: string[]): Promise<Map<string, n
 function buildFunnelResult(definition: FunnelStep[], dispatched: number, stepCounts: Map<string, number>): FunnelResult {
   let worstDropIndex: number | null = null;
   let worstDropPct = -1;
+  let previousCount = dispatched;
 
   const stages: FunnelResultStage[] = definition.map((stage, i) => {
-    const count = stage.key === "DISPARADO" ? dispatched : stepCounts.get(stage.key) ?? 0;
-    const previousCount = i === 0 ? count : definition[i - 1].key === "DISPARADO" ? dispatched : stepCounts.get(definition[i - 1].key) ?? 0;
+    const rawCount = stage.key === "DISPARADO" ? dispatched : stepCounts.get(stage.key) ?? 0;
+    // Um funil nunca "cresce" de uma etapa pra próxima — se acontecer (ex:
+    // mistura de fontes de dados diferentes), trava no valor da etapa anterior
+    // em vez de mostrar um número maior que não faz sentido.
+    const count = i === 0 ? rawCount : Math.min(rawCount, previousCount);
     const dropFromPrevious = i === 0 || previousCount === 0 ? 0 : Math.round((1 - count / previousCount) * 100);
     if (i > 0 && previousCount > 0 && dropFromPrevious > worstDropPct) {
       worstDropPct = dropFromPrevious;
       worstDropIndex = i;
     }
+    previousCount = count;
     return { ...stage, count, dropFromPrevious };
   });
 
