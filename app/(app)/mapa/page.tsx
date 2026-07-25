@@ -38,20 +38,26 @@ export default async function MapaPage({
               addresses: {
                 where: { latitude: { not: null } },
                 orderBy: { createdAt: "desc" },
-                take: 1,
               },
             },
           },
         },
       },
+      appointment: true,
     },
     take: 2000,
   });
 
   const points: MapCasePoint[] = cases
-    .filter((c) => c.serviceOrder.customer.addresses[0])
-    .map((c) => {
-      const addr = c.serviceOrder.customer.addresses[0];
+    .map((c): MapCasePoint | null => {
+      const addresses = c.serviceOrder.customer.addresses;
+      // Um cliente pode ter mais de um endereço geocodificado (mais de um
+      // caso ativo pra ele, ex: vários agendamentos no mesmo telefone) —
+      // pega o que bate com o endereço do agendamento desse caso específico,
+      // e só cai pro mais recente do cliente como fallback.
+      const matching = c.appointment ? addresses.find((a) => a.fullAddress === c.appointment!.address) : undefined;
+      const addr = matching ?? addresses[0];
+      if (!addr) return null;
       return {
         caseId: c.id,
         lat: addr.latitude as number,
@@ -64,6 +70,7 @@ export default async function MapaPage({
         color: statusToMapColor(c.status),
       };
     })
+    .filter((p): p is MapCasePoint => p !== null)
     .filter((p) => !groupFilter || p.group === groupFilter);
 
   const cities = await prisma.customer.findMany({
