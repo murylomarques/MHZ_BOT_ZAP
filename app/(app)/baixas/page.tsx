@@ -6,6 +6,7 @@ import { ClosuresTable } from "./ClosuresTable";
 export const dynamic = "force-dynamic";
 
 const TABS: { value: ClosureStatus; label: string }[] = [
+  { value: "AGUARDANDO_DEVOLUCAO", label: "Aguardando devolução" },
   { value: "AGUARDANDO", label: "Aguardando" },
   { value: "PROCESSANDO", label: "Processando" },
   { value: "REALIZADA", label: "Realizada" },
@@ -54,11 +55,16 @@ export default async function BaixasPage({
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold">Baixas</h1>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Baixa no sistema externo dos casos com equipamento retirado
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Baixas</h1>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Baixa no sistema externo dos casos com equipamento retirado
+          </p>
+        </div>
+        <Link href="/equipamentos" className="text-sm underline" style={{ color: "var(--brand)" }}>
+          Custódia de equipamentos (bipar)
+        </Link>
       </div>
 
       {overdueCount > 0 && (

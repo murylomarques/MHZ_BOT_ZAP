@@ -50,6 +50,7 @@ model User {
   conversationsOwned Conversation[]
   auditLogs          AuditLog[]
   tasks              Task[]
+  equipmentReturns   PickupEquipment[]
 
   @@map("app_users")
 }
@@ -676,7 +677,11 @@ model PickupEquipment {
   observation  String?
   photoUrl     String? @map("photo_url")
 
-  pickup Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+  returnedToBaseAt       DateTime? @map("returned_to_base_at")
+  returnedToBaseByUserId String?   @map("returned_to_base_by_user_id") @db.Uuid
+
+  pickup                Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+  returnedToBaseByUser  User?  @relation(fields: [returnedToBaseByUserId], references: [id])
 
   @@map("pickup_equipment")
 }
@@ -703,6 +708,7 @@ enum ClosureStatus {
   REALIZADA
   ERRO
   DIVERGENCIA
+  AGUARDANDO_DEVOLUCAO
 }
 
 model SystemClosure {

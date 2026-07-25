@@ -2,6 +2,7 @@ import { prisma } from "@/lib/server/db/prisma";
 import { STATUS_LABELS } from "@/lib/server/status/labels";
 import { getDispatchStage, DISPATCH_STAGE_LABELS, type DispatchStage } from "@/lib/server/status/dispatch-stage";
 import { getBotFunnels, type FunnelResult } from "@/lib/server/status/bot-funnel";
+import { getMotoboyGap, getRetiradaGap, getAgendamentoGap } from "@/lib/server/status/operational-gaps";
 import { NudgeRespondedButton } from "./NudgeRespondedButton";
 import Link from "next/link";
 import type { CaseStatus } from "@prisma/client";
@@ -70,6 +71,11 @@ export default async function DashboardPage() {
   }
 
   const botFunnels = await getBotFunnels();
+  const [motoboyGap, retiradaGap, agendamentoGap] = await Promise.all([
+    getMotoboyGap(),
+    getRetiradaGap(),
+    getAgendamentoGap(),
+  ]);
 
   const hasData = total > 0;
 
@@ -117,6 +123,76 @@ export default async function DashboardPage() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+              <div className="text-sm font-medium mb-1">Gap de motoboy</div>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                Cidades com retirada pendente e nenhum motoboy ativo cobrindo.
+              </p>
+              <div className="space-y-1">
+                {motoboyGap.map((g) => (
+                  <div key={g.city} className="flex items-center justify-between text-sm">
+                    <span>{g.city}</span>
+                    <span style={{ color: "var(--danger, #e05252)" }}>{g.pendingCount}</span>
+                  </div>
+                ))}
+                {motoboyGap.length === 0 && (
+                  <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Sem lacuna de cobertura no momento.
+                  </div>
+                )}
+              </div>
+              <Link href="/motoboys" className="text-xs underline mt-2 inline-block" style={{ color: "var(--brand)" }}>
+                Ver motoboys
+              </Link>
+            </div>
+
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+              <div className="text-sm font-medium mb-1">Gap de retirada</div>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                Cidades com taxa de sucesso abaixo de 70% (últimos 7 dias, mín. 5 tentativas).
+              </p>
+              <div className="space-y-1">
+                {retiradaGap.map((g) => (
+                  <div key={g.city} className="flex items-center justify-between text-sm">
+                    <span>{g.city}</span>
+                    <span style={{ color: "var(--danger, #e05252)" }}>
+                      {Math.round(g.successRate * 100)}% ({g.total})
+                    </span>
+                  </div>
+                ))}
+                {retiradaGap.length === 0 && (
+                  <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Nenhuma cidade abaixo do esperado.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+              <div className="text-sm font-medium mb-1">Gap de agendamento</div>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                Cidades com clientes que responderam mas não foram agendados há mais de 24h.
+              </p>
+              <div className="space-y-1">
+                {agendamentoGap.map((g) => (
+                  <div key={g.city} className="flex items-center justify-between text-sm">
+                    <span>{g.city}</span>
+                    <span style={{ color: "var(--danger, #e05252)" }}>{g.stuckCount}</span>
+                  </div>
+                ))}
+                {agendamentoGap.length === 0 && (
+                  <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Nenhum cliente parado há mais de 24h.
+                  </div>
+                )}
+              </div>
+              <Link href="/operacoes?status=CLIENTE_RESPONDEU" className="text-xs underline mt-2 inline-block" style={{ color: "var(--brand)" }}>
+                Ver operações
+              </Link>
+            </div>
           </div>
 
           <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>

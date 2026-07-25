@@ -192,11 +192,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cas
         });
 
         // Baixas (fase 12) precisam de um registro de fechamento para operar
-        // — criado automaticamente aqui, status AGUARDANDO, ligado à retirada.
+        // — criado automaticamente aqui, ligado à retirada. Se tem
+        // equipamento rastreado, a baixa fica travada em
+        // AGUARDANDO_DEVOLUCAO até o equipamento ser bipado de volta na
+        // base (ver app/api/equipment/checkin/route.ts); sem equipamento
+        // rastreado (dado legado), segue direto pro padrão AGUARDANDO.
+        const closureStatus = data.equipment.length > 0 ? "AGUARDANDO_DEVOLUCAO" : "AGUARDANDO";
         await prisma.systemClosure.upsert({
           where: { pickupId: pickup.id },
           update: {},
-          create: { pickupId: pickup.id },
+          create: { pickupId: pickup.id, status: closureStatus },
         });
       } else if (data.reason) {
         await transitionCase({
