@@ -15,6 +15,12 @@ export type CityCoverage = {
   hasActiveCourier: boolean;
 };
 
+export type StrandedStop = {
+  city: string;
+  courierName: string;
+  count: number;
+};
+
 // Cidades com demanda de retirada em andamento (agendado até atribuído a
 // motoboy) — é o universo relevante pra saber se falta cobertura.
 const DEMAND_STATUSES = ["AGENDADO", "AGUARDANDO_ROTA", "ROTA_PLANEJADA", "ATRIBUIDO_MOTOBOY"] as const;
@@ -74,4 +80,23 @@ export async function getCityCoverage(): Promise<CityCoverage[]> {
       if (a.hasActiveCourier !== b.hasActiveCourier) return a.hasActiveCourier ? 1 : -1;
       return b.pendingCount - a.pendingCount;
     });
+}
+
+// Paradas ainda pendentes cuja rota pertence a um motoboy que não está mais
+// ATIVO (ex: ficou off pelo WhatsApp e não teve pra quem repassar) — precisa
+// de alguém do time olhar e rebalancear manualmente.
+export async function getStrandedStops(): Promise<StrandedStop[]> {
+  const rows = await prisma.$queryRaw<{ city: string; courier_name: string; count: bigint }[]>`
+    SELECT c.city, co.name AS courier_name, count(*) AS count
+    FROM route_stops rs
+    JOIN routes r ON r.id = rs.route_id
+    JOIN couriers co ON co.id = r.courier_id
+    JOIN case_records cr ON cr.id = rs.case_id
+    JOIN service_orders so ON so.id = cr.service_order_id
+    JOIN customers c ON c.id = so.customer_id
+    WHERE co.status != 'ATIVO' AND rs.status NOT IN ('CONCLUIDA', 'NAO_REALIZADA') AND r.date >= CURRENT_DATE
+    GROUP BY c.city, co.name
+    ORDER BY count DESC
+  `;
+  return rows.map((r) => ({ city: r.city, courierName: r.courier_name, count: Number(r.count) }));
 }

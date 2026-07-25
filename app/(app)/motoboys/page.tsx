@@ -1,7 +1,7 @@
 import { requireUser, roleHasPermission } from "@/lib/server/auth/rbac";
 import { prisma } from "@/lib/server/db/prisma";
 import { KNOWN_CITIES } from "@/lib/server/bot/cities";
-import { getCourierFulfillmentToday, getCityCoverage } from "@/lib/server/status/motoboy-dashboard";
+import { getCourierFulfillmentToday, getCityCoverage, getStrandedStops } from "@/lib/server/status/motoboy-dashboard";
 import { CouriersManager } from "./CouriersManager";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,11 @@ export default async function MotoboysPage() {
 
   const equipmentMap = new Map<string, number>(equipmentByCourier.map((r) => [r.courier_id, Number(r.total)]));
 
-  const [fulfillment, coverage] = await Promise.all([getCourierFulfillmentToday(), getCityCoverage()]);
+  const [fulfillment, coverage, stranded] = await Promise.all([
+    getCourierFulfillmentToday(),
+    getCityCoverage(),
+    getStrandedStops(),
+  ]);
 
   function statsFor(courierId: string) {
     let realizadas = 0;
@@ -127,6 +131,30 @@ export default async function MotoboysPage() {
           </div>
         </div>
       </div>
+
+      {stranded.length > 0 && (
+        <div
+          className="rounded-xl border p-4"
+          style={{ borderColor: "var(--danger, #e05252)", background: "var(--surface)" }}
+        >
+          <div className="text-sm font-medium mb-1" style={{ color: "var(--danger, #e05252)" }}>
+            ⚠️ Paradas sem motoboy disponível
+          </div>
+          <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+            Motoboy ficou indisponível e não tinha outro pra repassar — precisa rebalancear manualmente.
+          </p>
+          <div className="space-y-1">
+            {stranded.map((s) => (
+              <div key={`${s.city}-${s.courierName}`} className="flex items-center justify-between text-sm">
+                <span>
+                  {s.city} — <span style={{ color: "var(--text-muted)" }}>era de {s.courierName}</span>
+                </span>
+                <span style={{ color: "var(--danger, #e05252)" }}>{s.count} parada(s)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <CouriersManager
         couriers={couriers.map((c) => ({
