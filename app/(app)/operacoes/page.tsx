@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/server/db/prisma";
 import { STATUS_LABELS } from "@/lib/server/status/labels";
 import { getDispatchStage, DISPATCH_STAGE_LABELS } from "@/lib/server/status/dispatch-stage";
-import { buildGroupCopyText } from "@/lib/server/status/group-copy-text";
-import { CopyGroupTextButton } from "./CopyGroupTextButton";
-import { NotifiedToGroupToggle } from "./NotifiedToGroupToggle";
 import type { CaseStatus } from "@prisma/client";
 import Link from "next/link";
 
@@ -22,57 +19,25 @@ export default async function OperacoesPage({
   const search = sp.q?.trim();
   const dateFrom = sp.dateFrom?.trim();
   const dateTo = sp.dateTo?.trim();
-  const groupFilter = sp.grupo; // "enviado" | "pendente" — ver notified_to_group abaixo
-  const prontosFilter = sp.prontos === "1"; // já tem dia/horário/endereço escolhidos, pronto pra copiar e enviar
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
-
-  // notified_to_group ainda não está no schema.prisma/client (SQL cru, ver
-  // app/api/cases/[id]/notified-to-group/route.ts) — pra filtrar por ele,
-  // primeiro descobre quais case_id batem com o filtro.
-  let groupCaseIds: string[] | null = null;
-  if (groupFilter === "enviado" || groupFilter === "pendente") {
-    const rows = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM case_records WHERE notified_to_group = ${groupFilter === "enviado"}
-    `;
-    groupCaseIds = rows.map((r) => r.id);
-  }
-
-  // "Prontos para envio" = já tem appointment (dia+período escolhidos) e
-  // endereço original do cliente — os mesmos dois requisitos de
-  // `showGroupActions`/`buildGroupCopyText` abaixo.
-  const needsAppointment = !!(dateFrom || dateTo || prontosFilter);
 
   const where = {
     ...(statusFilter ? { status: { in: statusFilter } } : {}),
-    ...(needsAppointment
+    ...(dateFrom || dateTo
       ? {
           appointment: {
             is: {
-              ...(dateFrom || dateTo
-                ? {
-                    date: {
-                      ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
-                      ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {}),
-                    },
-                  }
-                : {}),
+              date: {
+                ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
+                ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {}),
+              },
             },
           },
         }
       : {}),
-    ...(groupCaseIds ? { id: { in: groupCaseIds } } : {}),
     serviceOrder: {
       is: {
-        ...(cityFilter || prontosFilter
-          ? {
-              customer: {
-                is: {
-                  ...(cityFilter ? { city: cityFilter } : {}),
-                  ...(prontosFilter ? { addresses: { some: {} } } : {}),
-                },
-              },
-            }
-          : {}),
+        ...(cityFilter ? { customer: { city: cityFilter } } : {}),
         ...(search
           ? {
               OR: [
@@ -92,7 +57,7 @@ export default async function OperacoesPage({
     prisma.caseRecord.findMany({
       where,
       include: {
-        serviceOrder: { include: { customer: { include: { addresses: { take: 1 } } } } },
+        serviceOrder: { include: { customer: true } },
         assignment: { include: { user: { select: { name: true } } } },
         appointment: true,
         botMessages: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
@@ -102,15 +67,6 @@ export default async function OperacoesPage({
       take: PAGE_SIZE,
     }),
   ]);
-
-  const caseIdsOnPage = cases.map((c) => c.id);
-  const notifiedMap = new Map<string, boolean>();
-  if (caseIdsOnPage.length > 0) {
-    const notifiedRows = await prisma.$queryRaw<{ id: string; notified_to_group: boolean }[]>`
-      SELECT id, notified_to_group FROM case_records WHERE id = ANY(${caseIdsOnPage}::uuid[])
-    `;
-    for (const row of notifiedRows) notifiedMap.set(row.id, row.notified_to_group);
-  }
 
   const cities = await prisma.customer.findMany({
     select: { city: true },
@@ -182,23 +138,6 @@ export default async function OperacoesPage({
             style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--text)" }}
           />
         </label>
-        <select
-          name="grupo"
-          defaultValue={groupFilter ?? ""}
-          className="rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--text)" }}
-        >
-          <option value="">Grupo: todos</option>
-          <option value="pendente">Grupo: pendente</option>
-          <option value="enviado">Grupo: enviado</option>
-        </select>
-        <label
-          className="flex items-center gap-1.5 text-sm rounded-lg border px-3 py-2 cursor-pointer"
-          style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--text)" }}
-        >
-          <input type="checkbox" name="prontos" value="1" defaultChecked={prontosFilter} />
-          Prontos para envio
-        </label>
         <button
           type="submit"
           className="rounded-lg px-3 py-2 text-sm font-medium"
@@ -221,8 +160,6 @@ export default async function OperacoesPage({
               <th className="p-3">Etapa de disparo</th>
               <th className="p-3">Atendente</th>
               <th className="p-3">Atualizado em</th>
-              <th className="p-3">Grupo</th>
-              <th className="p-3">Copiar</th>
               <th className="p-3">Parcial</th>
               <th className="p-3">Cidade</th>
               <th className="p-3">Data agendada</th>
@@ -230,28 +167,9 @@ export default async function OperacoesPage({
           </thead>
           <tbody>
             {cases.map((c) => {
-              const originalAddress = c.serviceOrder.customer.addresses[0]?.fullAddress;
-              // Flag/copiar só aparecem depois que o cliente já escolheu o
-              // horário de retirada — ou seja, quando existe um Appointment
-              // (windowStart é obrigatório nele) — pedido explícito do usuário.
-              const showGroupActions = !!c.appointment && !!originalAddress;
               // Parcial = escolheu dia/período mas não confirmou o endereço —
               // appointment já existe (endereço do cadastro), só falta o cliente responder.
               const isPartial = !!c.appointment && !c.appointment.confirmedByClient;
-              const groupCopyText = showGroupActions
-                ? buildGroupCopyText({
-                    city: c.serviceOrder.customer.city,
-                    saId: c.serviceOrder.saId,
-                    customerName: c.serviceOrder.customer.name,
-                    phone: c.serviceOrder.customer.phone,
-                    originalAddress: originalAddress!,
-                    appointmentAddress: c.appointment?.address,
-                    observation: c.appointment?.observation,
-                    windowStart: c.appointment?.windowStart,
-                    date: c.appointment?.date,
-                    confirmedByClient: c.appointment?.confirmedByClient,
-                  })
-                : null;
               return (
                 <tr key={c.id} className="border-b last:border-0 hover:opacity-90" style={{ borderColor: "var(--border)" }}>
                   <td className="p-3">
@@ -272,14 +190,6 @@ export default async function OperacoesPage({
                     {c.updatedAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                   </td>
                   <td className="p-3">
-                    {showGroupActions ? (
-                      <NotifiedToGroupToggle caseId={c.id} notified={notifiedMap.get(c.id) ?? false} />
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="p-3">{groupCopyText ? <CopyGroupTextButton text={groupCopyText} /> : "-"}</td>
-                  <td className="p-3">
                     {isPartial ? (
                       <span style={{ color: "var(--warning, #b8860b)" }}>Parcial</span>
                     ) : (
@@ -297,7 +207,7 @@ export default async function OperacoesPage({
             })}
             {cases.length === 0 && (
               <tr>
-                <td colSpan={14} className="p-6 text-center" style={{ color: "var(--text-muted)" }}>
+                <td colSpan={12} className="p-6 text-center" style={{ color: "var(--text-muted)" }}>
                   Nenhum caso encontrado com esses filtros.
                 </td>
               </tr>

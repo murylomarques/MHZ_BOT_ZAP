@@ -1,6 +1,8 @@
 const { upsertContact, insertMessage, insertStatusUpdate } = require('../lib/db');
 const { handleConversation } = require('../lib/conversation');
 const { syncOutboundStatus, syncInboundMessage } = require('../lib/new-schema-sync');
+const { findActiveCourierByPhone } = require('../lib/motoboy-routing');
+const { handleMotoboyConversation } = require('../lib/motoboy-conversation');
 
 // Vercel serverless function: GET = verificação do webhook pela Meta, POST = eventos recebidos.
 module.exports = async (req, res) => {
@@ -75,15 +77,29 @@ async function processMessages(value) {
       rawPayload: msg,
     });
 
+    // Telefone de motoboy ativo vai pro fluxo dele (ver roteiro do dia,
+    // marcar retirado/ausente), não pro fluxo de cliente.
+    const courier = await findActiveCourierByPhone(waId).catch((err) => {
+      console.error('Erro ao verificar se o telefone é de motoboy:', err);
+      return null;
+    });
+
     try {
-      await handleConversation({ waId, contactId, msg, profileName: profileByWaId.get(waId) });
+      if (courier) {
+        await handleMotoboyConversation({ waId, contactId, msg, courier });
+      } else {
+        await handleConversation({ waId, contactId, msg, profileName: profileByWaId.get(waId) });
+      }
     } catch (err) {
       console.error('Erro ao processar conversa do bot:', err);
     }
 
     // Aditivo: espelha a resposta no sistema novo (MHZ Retira), se o telefone
-    // tiver um caso aberto lá. Nunca deve afetar o fluxo do bot acima.
-    await syncInboundMessage(waId, body);
+    // tiver um caso aberto lá. Nunca deve afetar o fluxo do bot acima. Só se
+    // aplica a clientes — motoboy não tem case_record vinculado ao telefone.
+    if (!courier) {
+      await syncInboundMessage(waId, body);
+    }
   }
 }
 

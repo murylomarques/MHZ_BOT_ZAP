@@ -7,3 +7,6 @@ tsconfig.tsbuildinfo
 
 # Base com dados pessoais de clientes (LGPD) — não versionar.
 base_disparo_misto_*.csv
+
+.vercel
+.env*
