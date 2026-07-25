@@ -11,6 +11,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "test": "echo \"no tests\" && exit 0"
