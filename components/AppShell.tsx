@@ -45,6 +45,7 @@ const NAV_ADMIN_GESTOR: NavGroup[] = [
       { href: "/agenda", label: "Agenda", icon: IconCalendar },
       { href: "/mapa", label: "Mapa e Rotas", icon: IconMap },
       { href: "/retiradas", label: "Retiradas", icon: IconBox },
+      { href: "/equipamentos", label: "Custódia de Equipamentos", icon: IconBox },
       { href: "/baixas", label: "Baixas", icon: IconCheckCircle },
     ],
   },
