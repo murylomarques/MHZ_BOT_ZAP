@@ -36,15 +36,22 @@ async function main() {
     where: { id: "00000000-0000-0000-0000-000000000010" },
     create: {
       id: "00000000-0000-0000-0000-000000000010",
-      internalName: "Retirada — contato inicial",
-      hsmCode: "msg_inicial_v1",
+      internalName: "Retirada — foco em agendamento",
+      hsmCode: "msg_inicio_foco_retiradas",
       previewText:
-        "Olá! 👋 Aqui é a equipe da DESKTOP. Vimos que você solicitou a retirada do equipamento de internet e " +
-        "queríamos falar com você antes de seguir com isso. [botões: Valor da mensalidade / Qualidade-velocidade / " +
-        "Mudança de endereço / Não uso mais / Outro motivo]",
+        "Vamos agendar sua retirada. O processo possui apenas 3 etapas e leva menos de 1 minuto: " +
+        "confirmar o endereço, escolher a data e o período, revisar e confirmar. [botão: Começar]",
       variables: [],
     },
-    update: {},
+    update: {
+      internalName: "Retirada — foco em agendamento",
+      hsmCode: "msg_inicio_foco_retiradas",
+      flowCode: null,
+      previewText:
+        "Vamos agendar sua retirada. O processo possui apenas 3 etapas e leva menos de 1 minuto: " +
+        "confirmar o endereço, escolher a data e o período, revisar e confirmar. [botão: Começar]",
+      variables: [],
+    },
   });
 
   await prisma.botCampaign.upsert({

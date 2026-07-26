@@ -6,9 +6,8 @@
 
 require('dotenv').config();
 
-const { sendText } = require('../lib/whatsapp');
 const { upsertContact, setConversationState } = require('../lib/db');
-const { askRetentionReason, BRAND } = require('../lib/conversation');
+const { showPickupOpening } = require('../lib/conversation');
 
 async function main() {
   const waId = process.argv[2];
@@ -21,15 +20,8 @@ async function main() {
 
   await upsertContact(waId, name);
 
-  const greeting = name ? `Olá, ${name}! 👋` : 'Olá! 👋';
-  await sendText(
-    waId,
-    `${greeting} Aqui é a equipe da ${BRAND}. Vimos que você solicitou a retirada do equipamento de internet e ` +
-      `queríamos falar com você antes de seguir com isso.`
-  );
-
-  await askRetentionReason(waId);
-  await setConversationState(waId, 'AWAITING_RETENTION_REASON', {});
+  await showPickupOpening(waId);
+  await setConversationState(waId, 'AWAITING_PICKUP_START', {});
 
   console.log(`Mensagem de contato ativo enviada para ${waId}.`);
   process.exit(0);

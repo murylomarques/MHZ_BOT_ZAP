@@ -149,11 +149,11 @@ export function TemplateManager({ templates }: { templates: Template[] }) {
               />
             </label>
             <label className="text-sm space-y-1">
-              <span style={{ color: "var(--text-muted)" }}>Nome do template na Meta (ex: msg_inicial_v1)</span>
+              <span style={{ color: "var(--text-muted)" }}>Nome do template na Meta (ex: msg_inicio_foco_retiradas)</span>
               <input
                 value={form.hsmCode}
                 onChange={(e) => setForm({ ...form, hsmCode: e.target.value })}
-                placeholder="msg_inicial_v1"
+                placeholder="msg_inicio_foco_retiradas"
                 className="w-full rounded-lg border px-3 py-2"
                 style={{ borderColor: "var(--border)", background: "var(--bg)", color: "var(--text)" }}
               />

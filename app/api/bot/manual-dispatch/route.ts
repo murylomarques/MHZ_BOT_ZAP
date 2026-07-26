@@ -18,7 +18,7 @@ const legacyDb = require("../../../../lib/db") as {
 // Template aprovado pela Meta que dispara o fluxo de retenção (já traz os
 // botões de motivo do cancelamento embutidos — ver lib/conversation.js,
 // que reconhece o clique nesses botões e entra direto na oferta de retenção).
-const INITIAL_CONTACT_TEMPLATE_NAME = "msg_inicial_v1";
+const INITIAL_CONTACT_TEMPLATE_NAME = "msg_inicio_foco_retiradas";
 
 // Aceita tanto o texto cru da textarea (uma entrada por linha, "nome,telefone"
 // ou apenas "telefone") quanto uma lista já estruturada — ver parseRawEntries.

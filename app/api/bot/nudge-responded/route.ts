@@ -11,7 +11,7 @@ export const maxDuration = 300;
 // nunca completaram nem a retenção nem o agendamento da retirada. Não
 // cria caso novo (diferente de /api/bot/manual-dispatch): usa o case_record
 // já existente e só registra a nova mensagem + uma nota.
-const NUDGE_TEMPLATE_NAME = "msg_inicial_v1";
+const NUDGE_TEMPLATE_NAME = "msg_inicio_foco_retiradas";
 const DELAY_MS = 400; // espaçamento entre envios, mesmo padrão do disparo em massa
 
 function sleep(ms: number) {
