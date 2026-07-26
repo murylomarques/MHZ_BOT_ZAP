@@ -28,6 +28,22 @@ export function CampaignActions({ campaignId, status }: { campaignId: string; st
     }
   }
 
+  function askDispatchPassword(): string | null {
+    return window.prompt("Digite a senha para autorizar este disparo:");
+  }
+
+  function protectedPost(url: string) {
+    const password = askDispatchPassword();
+    if (password === null) return null;
+    return run("disparar", () =>
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      })
+    );
+  }
+
   function statusAction(action: string) {
     return () =>
       run(action, () =>
@@ -75,7 +91,7 @@ export function CampaignActions({ campaignId, status }: { campaignId: string; st
           <>
             <button
               onClick={() =>
-                run("disparar", () => fetch(`/api/bot/campaigns/${campaignId}/dispatch`, { method: "POST" }))
+                protectedPost(`/api/bot/campaigns/${campaignId}/dispatch`)
               }
               disabled={loading !== null}
               className="rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-60"
@@ -118,9 +134,17 @@ export function CampaignActions({ campaignId, status }: { campaignId: string; st
 
         <button
           onClick={() =>
-            run("reprocessar", () =>
-              fetch(`/api/bot/campaigns/${campaignId}/reprocess-errors`, { method: "POST" })
-            )
+            (() => {
+              const password = askDispatchPassword();
+              if (password === null) return;
+              run("reprocessar", () =>
+                fetch(`/api/bot/campaigns/${campaignId}/reprocess-errors`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ password }),
+                })
+              );
+            })()
           }
           disabled={loading !== null}
           className="rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-60"

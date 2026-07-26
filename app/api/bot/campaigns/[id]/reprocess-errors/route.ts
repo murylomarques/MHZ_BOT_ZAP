@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, handleAuthError } from "@/lib/server/auth/rbac";
 import { prisma } from "@/lib/server/db/prisma";
 import { writeAudit } from "@/lib/server/auth/audit";
+import { isValidDispatchPassword, invalidDispatchPasswordResponse } from "@/lib/server/auth/dispatch-password";
 
 // Reprocessar erros: volta itens ERRO para PENDENTE (respeitando maxAttempts
 // da campanha) para que uma próxima rodada de disparo os tente novamente.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requirePermission("campaigns_manage");
+    const body = (await req.json().catch(() => ({}))) as { password?: string };
+    if (!isValidDispatchPassword(body.password)) return invalidDispatchPasswordResponse();
     const { id: campaignId } = await params;
 
     const campaign = await prisma.botCampaign.findUnique({ where: { id: campaignId } });

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/server/db/prisma";
 import { writeAudit } from "@/lib/server/auth/audit";
 import { getConversationalProvider } from "@/lib/server/providers";
 import { transitionCase, InvalidTransitionError } from "@/lib/server/status/transitions";
+import { isValidDispatchPassword, invalidDispatchPasswordResponse } from "@/lib/server/auth/dispatch-password";
 
 export const maxDuration = 60;
 
@@ -39,12 +40,6 @@ function isValidPhone(phone: string): boolean {
   return /^\d{12,13}$/.test(phone);
 }
 
-function isValidDispatchPassword(password: string): boolean {
-  const expected = process.env.MANUAL_DISPATCH_PASSWORD;
-  if (!expected || password.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(password), Buffer.from(expected));
-}
-
 function parseRawEntries(raw: string): { input: string; name: string | null; phoneRaw: string }[] {
   return raw
     .split(/\r?\n/)
@@ -64,9 +59,7 @@ export async function POST(req: NextRequest) {
     const session = await requirePermission("campaigns_manage");
     const body = (await req.json()) as RequestBody;
 
-    if (!isValidDispatchPassword(body.password ?? "")) {
-      return NextResponse.json({ error: "Senha de disparo inválida." }, { status: 403 });
-    }
+    if (!isValidDispatchPassword(body.password)) return invalidDispatchPasswordResponse();
 
     const parsed: { input: string; name: string | null; phoneRaw: string }[] =
       typeof body.entries === "string"
@@ -76,13 +69,6 @@ export async function POST(req: NextRequest) {
             name: e.name?.trim() || null,
             phoneRaw: e.phone,
           }));
-
-    if (parsed.length !== 1) {
-      return NextResponse.json(
-        { error: "É permitido disparar para apenas um número por vez." },
-        { status: 400 }
-      );
-    }
 
     const results: EntryResult[] = [];
     const provider = getConversationalProvider();

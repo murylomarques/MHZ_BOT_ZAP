@@ -18,7 +18,7 @@ type DispatchResponse = {
 };
 
 export function ManualDispatchForm() {
-  const phoneRef = useRef<HTMLInputElement>(null);
+  const entriesRef = useRef<HTMLTextAreaElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export function ManualDispatchForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const entries = phoneRef.current?.value.trim();
+    const entries = entriesRef.current?.value.trim();
     const password = passwordRef.current?.value ?? "";
     if (!entries || !password) {
       setError("Informe o número e a senha de disparo.");
@@ -48,7 +48,7 @@ export function ManualDispatchForm() {
         return;
       }
       setLastResult(data);
-      if (phoneRef.current) phoneRef.current.value = "";
+      if (entriesRef.current) entriesRef.current.value = "";
       if (passwordRef.current) passwordRef.current.value = "";
       router.refresh();
     } catch {
@@ -62,18 +62,17 @@ export function ManualDispatchForm() {
     <form onSubmit={onSubmit} className="mhz-card p-4 space-y-3">
       <div>
         <label className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          Número para disparo
+          Pessoas para disparo
         </label>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-          É permitido enviar para apenas um número por vez, no formato <code>nome,telefone</code> ou somente{" "}
-          <code>telefone</code> com DDI 55 + DDD.
+          Uma pessoa por linha, no formato <code>nome,telefone</code> ou somente <code>telefone</code> com DDI 55 + DDD.
         </p>
       </div>
-      <input
-        ref={phoneRef}
-        type="text"
+      <textarea
+        ref={entriesRef}
+        rows={6}
         autoComplete="off"
-        placeholder="João Silva,5519981541198"
+        placeholder={"João Silva,5519981541198\nMaria Souza,5511999998888"}
         className="mhz-input w-full p-3 text-sm font-mono"
       />
       <div>

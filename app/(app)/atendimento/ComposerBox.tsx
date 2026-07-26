@@ -25,13 +25,15 @@ export function ComposerBox({
   async function handleSend() {
     const body = text.trim();
     if (!body) return;
+    const password = window.prompt("Digite a senha para autorizar o envio:");
+    if (password === null) return;
     setSending(true);
     setError(null);
     try {
       const res = await fetch(`/api/conversations/${caseId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: body }),
+        body: JSON.stringify({ text: body, password }),
       });
       const data = await res.json();
       if (!res.ok) {

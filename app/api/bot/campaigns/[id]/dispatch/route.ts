@@ -4,6 +4,7 @@ import { prisma } from "@/lib/server/db/prisma";
 import { writeAudit } from "@/lib/server/auth/audit";
 import { getConversationalProvider } from "@/lib/server/providers";
 import { transitionCase, InvalidTransitionError } from "@/lib/server/status/transitions";
+import { isValidDispatchPassword, invalidDispatchPasswordResponse } from "@/lib/server/auth/dispatch-password";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await requirePermission("campaigns_manage");
+    const body = (await req.json().catch(() => ({}))) as { password?: string };
+    if (!isValidDispatchPassword(body.password)) return invalidDispatchPasswordResponse();
     const { id: campaignId } = await params;
 
     const campaign = await prisma.botCampaign.findUnique({

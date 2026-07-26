@@ -11,10 +11,16 @@ export function NudgeRespondedButton({ count }: { count: number }) {
   async function onClick() {
     if (loading) return;
     if (!window.confirm(`Enviar lembrete para os ${count} clientes que responderam mas não continuaram?`)) return;
+    const password = window.prompt("Digite a senha para autorizar o follow-up:");
+    if (password === null) return;
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/bot/nudge-responded", { method: "POST" });
+      const res = await fetch("/api/bot/nudge-responded", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
       const json = await res.json();
       if (!res.ok) {
         setResult(json?.error ?? "Erro ao enviar lembretes");

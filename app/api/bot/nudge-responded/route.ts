@@ -3,6 +3,7 @@ import { requirePermission, handleAuthError } from "@/lib/server/auth/rbac";
 import { prisma } from "@/lib/server/db/prisma";
 import { writeAudit } from "@/lib/server/auth/audit";
 import { getConversationalProvider } from "@/lib/server/providers";
+import { isValidDispatchPassword, invalidDispatchPasswordResponse } from "@/lib/server/auth/dispatch-password";
 
 export const maxDuration = 300;
 
@@ -18,9 +19,11 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await requirePermission("campaigns_manage");
+    const body = (await req.json().catch(() => ({}))) as { password?: string };
+    if (!isValidDispatchPassword(body.password)) return invalidDispatchPasswordResponse();
     const provider = getConversationalProvider();
 
     const cases = await prisma.caseRecord.findMany({

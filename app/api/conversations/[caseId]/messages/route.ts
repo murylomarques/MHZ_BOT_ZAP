@@ -3,6 +3,7 @@ import { requireUser, handleAuthError } from "@/lib/server/auth/rbac";
 import { prisma } from "@/lib/server/db/prisma";
 import { writeAudit } from "@/lib/server/auth/audit";
 import { getConversationalProvider } from "@/lib/server/providers";
+import { isValidDispatchPassword, invalidDispatchPasswordResponse } from "@/lib/server/auth/dispatch-password";
 
 // Envia uma mensagem manual do atendente: registra a mensagem na conversa,
 // dispara de fato via WhatsApp (MessagingProvider) e mantém um registro em
@@ -13,7 +14,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cas
     const session = await requireUser();
     const { caseId } = await params;
 
-    const body = (await req.json().catch(() => ({}))) as { text?: string };
+    const body = (await req.json().catch(() => ({}))) as { text?: string; password?: string };
+    if (!isValidDispatchPassword(body.password)) return invalidDispatchPasswordResponse();
     const text = body.text?.trim();
     if (!text) {
       return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });

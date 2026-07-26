@@ -77,7 +77,7 @@ export default async function DisparoManualPage({
       <div>
         <h1 className="text-lg font-semibold">Disparo Manual</h1>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Envie a mensagem de retirada para um número por vez, mediante senha, e acompanhe o follow-up.
+          Envie a mensagem de retirada para uma ou mais pessoas, mediante senha, e acompanhe o follow-up.
         </p>
       </div>
 
