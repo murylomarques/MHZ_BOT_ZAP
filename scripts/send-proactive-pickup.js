@@ -6,8 +6,8 @@
 
 require('dotenv').config();
 
-const { upsertContact, setConversationState } = require('../lib/db');
-const { showPickupOpening } = require('../lib/conversation');
+const { upsertContact } = require('../lib/db');
+const { startPickupFlow } = require('../lib/conversation');
 
 async function main() {
   const waId = process.argv[2];
@@ -20,8 +20,7 @@ async function main() {
 
   await upsertContact(waId, name);
 
-  await showPickupOpening(waId);
-  await setConversationState(waId, 'AWAITING_PICKUP_START', {});
+  await startPickupFlow(waId);
 
   console.log(`Mensagem de contato ativo enviada para ${waId}.`);
   process.exit(0);
