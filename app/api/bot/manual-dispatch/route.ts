@@ -120,6 +120,7 @@ export async function POST(req: NextRequest) {
           to: phone,
           templateName: INITIAL_CONTACT_TEMPLATE_NAME,
           languageCode: "pt_BR",
+          variables: { customer_name: customer.name },
         });
 
         if (sendResult.success) {

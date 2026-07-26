@@ -77,6 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const customer = caseRecord.serviceOrder.customer;
       const variables: Record<string, string> = {};
       if (templateVariables.includes("nome")) variables.nome = customer.name;
+      if (templateVariables.includes("customer_name")) variables.customer_name = customer.name;
 
       const result = await provider.sendTemplate({
         to: customer.phone,

@@ -41,7 +41,7 @@ async function main() {
       previewText:
         "Vamos agendar sua retirada. O processo possui apenas 3 etapas e leva menos de 1 minuto: " +
         "confirmar o endereço, escolher a data e o período, revisar e confirmar. [botão: Começar]",
-      variables: [],
+      variables: ["customer_name"],
     },
     update: {
       internalName: "Retirada — foco em agendamento",
@@ -50,7 +50,7 @@ async function main() {
       previewText:
         "Vamos agendar sua retirada. O processo possui apenas 3 etapas e leva menos de 1 minuto: " +
         "confirmar o endereço, escolher a data e o período, revisar e confirmar. [botão: Começar]",
-      variables: [],
+      variables: ["customer_name"],
     },
   });
 

@@ -37,6 +37,7 @@ export async function POST() {
           to: phone,
           templateName: NUDGE_TEMPLATE_NAME,
           languageCode: "pt_BR",
+          variables: { customer_name: caseRecord.serviceOrder.customer.name },
         });
 
         if (sendResult.success) {

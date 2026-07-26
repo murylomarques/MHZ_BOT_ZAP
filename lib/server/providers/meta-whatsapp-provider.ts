@@ -51,7 +51,11 @@ export class MetaWhatsAppProvider implements MessagingProvider {
           ? [
               {
                 type: "body",
-                parameters: Object.values(input.variables).map((text) => ({ type: "text", text })),
+                parameters: Object.entries(input.variables).map(([parameterName, text]) => ({
+                  type: "text",
+                  parameter_name: parameterName,
+                  text,
+                })),
               },
             ]
           : undefined,
