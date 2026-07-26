@@ -23,7 +23,7 @@ const INITIAL_CONTACT_TEMPLATE_NAME = "msg_inicio_foco_retiradas";
 // Aceita tanto o texto cru da textarea (uma entrada por linha, "nome,telefone"
 // ou apenas "telefone") quanto uma lista já estruturada — ver parseRawEntries.
 type RawEntry = { name?: string | null; phone: string };
-type RequestBody = { entries: string | RawEntry[] };
+type RequestBody = { entries: string | RawEntry[]; password?: string };
 
 type EntryResult = {
   input: string;
@@ -37,6 +37,12 @@ type EntryResult = {
 
 function isValidPhone(phone: string): boolean {
   return /^\d{12,13}$/.test(phone);
+}
+
+function isValidDispatchPassword(password: string): boolean {
+  const expected = process.env.MANUAL_DISPATCH_PASSWORD;
+  if (!expected || password.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(password), Buffer.from(expected));
 }
 
 function parseRawEntries(raw: string): { input: string; name: string | null; phoneRaw: string }[] {
@@ -58,6 +64,10 @@ export async function POST(req: NextRequest) {
     const session = await requirePermission("campaigns_manage");
     const body = (await req.json()) as RequestBody;
 
+    if (!isValidDispatchPassword(body.password ?? "")) {
+      return NextResponse.json({ error: "Senha de disparo inválida." }, { status: 403 });
+    }
+
     const parsed: { input: string; name: string | null; phoneRaw: string }[] =
       typeof body.entries === "string"
         ? parseRawEntries(body.entries)
@@ -66,6 +76,13 @@ export async function POST(req: NextRequest) {
             name: e.name?.trim() || null,
             phoneRaw: e.phone,
           }));
+
+    if (parsed.length !== 1) {
+      return NextResponse.json(
+        { error: "É permitido disparar para apenas um número por vez." },
+        { status: 400 }
+      );
+    }
 
     const results: EntryResult[] = [];
     const provider = getConversationalProvider();

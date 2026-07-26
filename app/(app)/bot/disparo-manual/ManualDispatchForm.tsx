@@ -18,7 +18,8 @@ type DispatchResponse = {
 };
 
 export function ManualDispatchForm() {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<DispatchResponse | null>(null);
@@ -26,8 +27,12 @@ export function ManualDispatchForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const entries = textareaRef.current?.value.trim();
-    if (!entries) return;
+    const entries = phoneRef.current?.value.trim();
+    const password = passwordRef.current?.value ?? "";
+    if (!entries || !password) {
+      setError("Informe o número e a senha de disparo.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setLastResult(null);
@@ -35,7 +40,7 @@ export function ManualDispatchForm() {
       const res = await fetch("/api/bot/manual-dispatch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries }),
+        body: JSON.stringify({ entries, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,7 +48,8 @@ export function ManualDispatchForm() {
         return;
       }
       setLastResult(data);
-      if (textareaRef.current) textareaRef.current.value = "";
+      if (phoneRef.current) phoneRef.current.value = "";
+      if (passwordRef.current) passwordRef.current.value = "";
       router.refresh();
     } catch {
       setError("Falha de rede ao disparar mensagens");
@@ -56,19 +62,32 @@ export function ManualDispatchForm() {
     <form onSubmit={onSubmit} className="mhz-card p-4 space-y-3">
       <div>
         <label className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          Números para disparo
+          Número para disparo
         </label>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-          Um por linha, no formato <code>nome,telefone</code> ou apenas <code>telefone</code> (com DDI 55 + DDD, ex:
-          5519981541198).
+          É permitido enviar para apenas um número por vez, no formato <code>nome,telefone</code> ou somente{" "}
+          <code>telefone</code> com DDI 55 + DDD.
         </p>
       </div>
-      <textarea
-        ref={textareaRef}
-        rows={6}
-        placeholder={"João Silva,5519981541198\n5511999998888"}
+      <input
+        ref={phoneRef}
+        type="text"
+        autoComplete="off"
+        placeholder="João Silva,5519981541198"
         className="mhz-input w-full p-3 text-sm font-mono"
       />
+      <div>
+        <label className="text-sm font-medium" style={{ color: "var(--text)" }}>
+          Senha de disparo
+        </label>
+        <input
+          ref={passwordRef}
+          type="password"
+          autoComplete="current-password"
+          placeholder="Digite a senha para autorizar"
+          className="mhz-input w-full p-3 text-sm mt-1"
+        />
+      </div>
       <div className="flex items-center gap-3">
         <button type="submit" disabled={loading} className="mhz-btn-primary rounded-lg px-4 py-2 text-sm font-medium">
           {loading ? "Disparando..." : "Disparar"}
