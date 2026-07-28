@@ -10,3 +10,4 @@ base_disparo_misto_*.csv
 
 .vercel
 .env*
+/.swc
