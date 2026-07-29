@@ -3,8 +3,9 @@ import { start } from "workflow/api";
 import { prisma } from "@/lib/server/db/prisma";
 import { scheduledVolunteerDispatch } from "@/workflows/scheduled-volunteer-dispatch";
 
-const CAMPAIGN_ID = "33f1c001-4b09-4ae6-8e19-a98381dd7c09";
-const SCHEDULE_DATE = "2026-07-28";
+const CAMPAIGN_ID = "222f7da6-71ff-4efd-8b79-a9897a71ca0c";
+// Execução única autorizada para hoje, às 08:00 no horário de São Paulo.
+const SCHEDULE_DATE = "2026-07-29";
 
 function saoPauloNow() {
   const parts = new Intl.DateTimeFormat("en-CA", {
