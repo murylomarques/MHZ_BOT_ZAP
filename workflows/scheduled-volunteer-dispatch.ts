@@ -1,8 +1,8 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "222f7da6-71ff-4efd-8b79-a9897a71ca0c";
-const CAMPAIGN_NAME = "Reenvio Voluntarios Nao Agendados - 29-07-2026 08h";
-const HARD_LIMIT = 999;
+const CAMPAIGN_ID = "2b64e6b3-06aa-4a03-af17-9bb08ca80a21";
+const CAMPAIGN_NAME = "Disparo Voluntarios 1000 - 30-07-2026 Agora";
+const HARD_LIMIT = 1000;
 const CHUNK_SIZE = 20;
 
 type DispatchResult = { attempted: number; sent: number; failed: number };
