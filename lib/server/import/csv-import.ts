@@ -19,6 +19,8 @@ const KNOWN_CITIES = new Set([
   "Capela Do Alto",
   "Francisco Morato",
   "Franco Da Rocha",
+  "Estiva Gerbi",
+  "Holambra",
   "Hortolandia",
   "Indaiatuba",
   "Ipero",
@@ -30,6 +32,8 @@ const KNOWN_CITIES = new Set([
   "Leme",
   "Louveira",
   "Mairipora",
+  "Mogi Guacu",
+  "Mogi Mirim",
   "Nazare Paulista",
   "Pedreira",
   "Piracaia",
@@ -462,7 +466,10 @@ export async function runCsvImport(params: {
     const soIds: string[] = [];
     const saNumbers: (string | null)[] = [];
     const woNumbers: (string | null)[] = [];
-    const scheduledDates: (Date | null)[] = [];
+    // Envia datas como texto para o unnest. Quando um lote inteiro contém
+    // apenas null, o driver pode inferir integer[] e o Postgres recusa o cast
+    // para timestamp[]. Texto mantém a tipagem estável inclusive nesse caso.
+    const scheduledDates: string[] = [];
     const phoneDuplicateFlags: boolean[] = [];
 
     for (const v of c) {
@@ -475,7 +482,7 @@ export async function runCsvImport(params: {
       soIds.push(existing.serviceOrderId);
       saNumbers.push(v.row.sa_number || null);
       woNumbers.push(v.row.wo_number || null);
-      scheduledDates.push(v.scheduledDate);
+      scheduledDates.push(v.scheduledDate?.toISOString().slice(0, 10) || "");
       phoneDuplicateFlags.push((phoneOccurrences.get(v.phone) ?? 0) > 1);
     }
 
@@ -490,10 +497,11 @@ export async function runCsvImport(params: {
 
     await prisma.$executeRaw`
       UPDATE service_orders so
-      SET sa_number = v.sa_number, wo_number = v.wo_number, wo_scheduled_date = v.wo_scheduled_date,
+      SET sa_number = v.sa_number, wo_number = v.wo_number,
+          wo_scheduled_date = nullif(v.wo_scheduled_date, '')::date,
           phone_duplicate_flag = v.phone_duplicate_flag, updated_at = now()
       FROM unnest(
-        ${soIds}::uuid[], ${saNumbers}::text[], ${woNumbers}::text[], ${scheduledDates}::timestamp[],
+        ${soIds}::uuid[], ${saNumbers}::text[], ${woNumbers}::text[], ${scheduledDates}::text[],
         ${phoneDuplicateFlags}::boolean[]
       ) AS v(so_id, sa_number, wo_number, wo_scheduled_date, phone_duplicate_flag)
       WHERE so.id = v.so_id
