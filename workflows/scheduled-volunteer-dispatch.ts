@@ -1,7 +1,7 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "2b64e6b3-06aa-4a03-af17-9bb08ca80a21";
-const CAMPAIGN_NAME = "Disparo Voluntarios 1000 - 30-07-2026 Agora";
+const CAMPAIGN_ID = "5259b5e4-d3f3-41aa-9210-1eb0afa3b7d9";
+const CAMPAIGN_NAME = "Previa Voluntarios 1000 - 31-07-2026";
 const HARD_LIMIT = 1000;
 const CHUNK_SIZE = 20;
 
