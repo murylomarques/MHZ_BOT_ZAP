@@ -9,8 +9,8 @@ import { scheduledVolunteerDispatch } from "@/workflows/scheduled-volunteer-disp
 
 export const runtime = "nodejs";
 
-const CAMPAIGN_ID = "88b0fbe5-07dc-4500-910f-c55fcd67ac95";
-const CAMPAIGN_NAME = "Previa Mista Voluntario Compulsorio 1000 - 03-08-2026";
+const CAMPAIGN_ID = "a76cd08b-db02-49de-b9ca-9a76d732cfd2";
+const CAMPAIGN_NAME = "Segundo Disparo Prioridade Voluntario Compulsorio 1000 - 04-08-2026";
 const HARD_LIMIT = 1000;
 
 export async function POST(request: Request) {
