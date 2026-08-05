@@ -38,6 +38,7 @@ const KNOWN_CITIES = new Set([
   "Pedreira",
   "Piracaia",
   "Piracicaba",
+  "Pirassununga",
   "Rio Claro",
   "Salto",
   "Santo Antonio De Posse",

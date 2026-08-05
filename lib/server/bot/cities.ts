@@ -35,6 +35,7 @@ export const KNOWN_CITIES = [
   "Pedreira",
   "Piracaia",
   "Piracicaba",
+  "Pirassununga",
   "Rio Claro",
   "Salto",
   "Santo Antonio De Posse",
