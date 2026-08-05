@@ -1,7 +1,7 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "a76cd08b-db02-49de-b9ca-9a76d732cfd2";
-const CAMPAIGN_NAME = "Segundo Disparo Prioridade Voluntario Compulsorio 1000 - 04-08-2026";
+const CAMPAIGN_ID = "729a9b73-cf34-4942-9a85-c6706e92e018";
+const CAMPAIGN_NAME = "Previa Novos com Pirassununga 1000 - 05-08-2026";
 const HARD_LIMIT = 1000;
 const CHUNK_SIZE = 20;
 
