@@ -1,8 +1,8 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "c04fdc32-958c-4b7e-aa0e-4132093b3f80";
-const CAMPAIGN_NAME = "Disparo 1500 Prioridade Voluntario com Pirassununga - 06-08-2026 08h";
-const HARD_LIMIT = 1500;
+const CAMPAIGN_ID = "08b50361-635c-4e0e-93d6-fdecbc7e39f1";
+const CAMPAIGN_NAME = "Reenvio Voluntarios Sem Agendamento com Ipero 1000 - 07-08-2026";
+const HARD_LIMIT = 1000;
 const CHUNK_SIZE = 20;
 
 type DispatchResult = { attempted: number; sent: number; failed: number };
