@@ -1,7 +1,7 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "08b50361-635c-4e0e-93d6-fdecbc7e39f1";
-const CAMPAIGN_NAME = "Reenvio Voluntarios Sem Agendamento com Ipero 1000 - 07-08-2026";
+const CAMPAIGN_ID = "7bba54b7-8d2c-4140-9c29-aa423cb61f18";
+const CAMPAIGN_NAME = "Reenvio Voluntarios Sem Agendamento 1000 - 08-08-2026";
 const HARD_LIMIT = 1000;
 const CHUNK_SIZE = 20;
 
