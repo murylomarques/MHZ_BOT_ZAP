@@ -3,6 +3,7 @@
 // porque a constante original não é exportada — mantém o acoplamento baixo
 // entre os dois módulos. Se a lista mudar, atualizar os dois lugares.
 export const KNOWN_CITIES = [
+  "Americana",
   "Amparo",
   "Aracariguama",
   "Araras",
@@ -37,10 +38,12 @@ export const KNOWN_CITIES = [
   "Piracicaba",
   "Pirassununga",
   "Rio Claro",
+  "Santa Barbara D Oeste",
   "Salto",
   "Santo Antonio De Posse",
   "Serra Negra",
   "Sorocaba",
+  "Sao Carlos",
   "Sumare",
   "Tatui",
   "Valinhos",

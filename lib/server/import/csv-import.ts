@@ -6,6 +6,7 @@ import type { CaseStatus } from "@prisma/client";
 // acoplamento — ver comentário lá) — mantém as duas em sincronia. Cidades
 // aqui usam o texto já sem acento, igual a coluna cidade_normalizada da base.
 const KNOWN_CITIES = new Set([
+  "Americana",
   "Amparo",
   "Aracariguama",
   "Araras",
@@ -40,10 +41,12 @@ const KNOWN_CITIES = new Set([
   "Piracicaba",
   "Pirassununga",
   "Rio Claro",
+  "Santa Barbara D Oeste",
   "Salto",
   "Santo Antonio De Posse",
   "Serra Negra",
   "Sorocaba",
+  "Sao Carlos",
   "Sumare",
   "Tatui",
   "Valinhos",
