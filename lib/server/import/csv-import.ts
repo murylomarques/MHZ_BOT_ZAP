@@ -31,6 +31,7 @@ const KNOWN_CITIES = new Set([
   "Jarinu",
   "Jundiai",
   "Leme",
+  "Limeira",
   "Louveira",
   "Mairipora",
   "Mogi Guacu",

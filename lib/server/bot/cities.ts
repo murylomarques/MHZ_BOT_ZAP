@@ -28,6 +28,7 @@ export const KNOWN_CITIES = [
   "Jarinu",
   "Jundiai",
   "Leme",
+  "Limeira",
   "Louveira",
   "Mairipora",
   "Mogi Guacu",
