@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/dispatch-approved-2026-08-11",
+      "path": "/api/cron/dispatch-approved-2026-08-12",
       "schedule": "0 11 * * *"
     }
   ]
