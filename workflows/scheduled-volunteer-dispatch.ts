@@ -1,7 +1,7 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "9f56d169-887b-4c9a-b1c1-7bb6728f1155";
-const CAMPAIGN_NAME = "Disparo Elegiveis 1500 com Novas Cidades - 13-08-2026";
+const CAMPAIGN_ID = "e7f01d73-5d38-4a00-aeb4-c4c40841585e";
+const CAMPAIGN_NAME = "Reenvio Elegiveis Sem Agendamento 1500 - 14-08-2026";
 const HARD_LIMIT = 1500;
 const CHUNK_SIZE = 20;
 
