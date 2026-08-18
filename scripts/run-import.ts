@@ -4,6 +4,7 @@ import { runCsvImport } from "../lib/server/import/csv-import";
 
 async function main() {
   const filePath = process.argv[2];
+  const partial = process.argv.includes("--partial");
   if (!filePath) {
     console.error("Uso: tsx scripts/run-import.ts <caminho.csv>");
     process.exit(1);
@@ -23,6 +24,7 @@ async function main() {
     fileName: filePath.split(/[\\/]/).pop() ?? filePath,
     content,
     importedByUserId: admin.id,
+    reconcileMissing: !partial,
   });
   const elapsedSec = ((Date.now() - start) / 1000).toFixed(1);
 

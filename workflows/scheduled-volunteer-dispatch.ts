@@ -1,8 +1,8 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "e7f01d73-5d38-4a00-aeb4-c4c40841585e";
-const CAMPAIGN_NAME = "Reenvio Elegiveis Sem Agendamento 1500 - 14-08-2026";
-const HARD_LIMIT = 1500;
+const CAMPAIGN_ID = "4b3dac15-12d3-46c3-98e2-19b33f4ac7bc";
+const CAMPAIGN_NAME = "Disparo Backlog Regional Jundiai 3000 - 18-08-2026";
+const HARD_LIMIT = 3000;
 const CHUNK_SIZE = 20;
 
 type DispatchResult = { attempted: number; sent: number; failed: number };

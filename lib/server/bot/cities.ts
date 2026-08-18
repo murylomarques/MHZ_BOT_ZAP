@@ -10,6 +10,7 @@ export const KNOWN_CITIES = [
   "Atibaia",
   "Boituva",
   "Bom Jesus Dos Perdoes",
+  "Braganca Paulista",
   "Cabreuva",
   "Caieiras",
   "Campinas",

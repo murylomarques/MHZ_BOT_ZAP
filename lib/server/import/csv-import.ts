@@ -13,6 +13,7 @@ const KNOWN_CITIES = new Set([
   "Atibaia",
   "Boituva",
   "Bom Jesus Dos Perdoes",
+  "Braganca Paulista",
   "Cabreuva",
   "Caieiras",
   "Campinas",
@@ -263,6 +264,9 @@ export async function runCsvImport(params: {
   // /api/import, que cria o registro e responde na hora pro usuário poder
   // acompanhar progresso), reusa em vez de criar outro.
   existingBatchId?: string;
+  // Bases regionais/parciais atualizam somente os registros presentes e não
+  // podem cancelar casos ausentes de outras regiões.
+  reconcileMissing?: boolean;
 }): Promise<ImportSummary> {
   const fileHash = crypto.createHash("sha256").update(params.content).digest("hex");
   const { header, rows } = parseCsv(params.content);
@@ -546,7 +550,7 @@ export async function runCsvImport(params: {
   // (que tende a virar comparação item a item) quando o array tem dezenas
   // de milhares de elementos, como numa base grande.
   const currentSaIds = dedupedRows.map((v) => v.saId);
-  const cancelled = await prisma.$queryRaw<{ id: string; fromStatus: CaseStatus }[]>`
+  const cancelled = params.reconcileMissing === false ? [] : await prisma.$queryRaw<{ id: string; fromStatus: CaseStatus }[]>`
     WITH candidates AS (
       SELECT cr.id, cr.status AS from_status
       FROM case_records cr
