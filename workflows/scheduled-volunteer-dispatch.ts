@@ -1,7 +1,7 @@
 import { FatalError } from "workflow";
 
-const CAMPAIGN_ID = "4b3dac15-12d3-46c3-98e2-19b33f4ac7bc";
-const CAMPAIGN_NAME = "Disparo Backlog Regional Jundiai 3000 - 18-08-2026";
+const CAMPAIGN_ID = "87486f46-4208-4db1-9e2e-965dce76f1f5";
+const CAMPAIGN_NAME = "Base Atualizada 3000 - 19-08-2026";
 const HARD_LIMIT = 3000;
 const CHUNK_SIZE = 20;
 
