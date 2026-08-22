@@ -9,9 +9,9 @@ import { scheduledVolunteerDispatch } from "@/workflows/scheduled-volunteer-disp
 
 export const runtime = "nodejs";
 
-const CAMPAIGN_ID = "6851735b-49c9-423b-903f-de385a452062";
-const CAMPAIGN_NAME = "Cidades Selecionadas 2000 - 21-08-2026";
-const HARD_LIMIT = 2000;
+const CAMPAIGN_ID = "4a155a47-43df-4fa3-99a0-558d93163a74";
+const CAMPAIGN_NAME = "Balanceado Menos Repetidos 1500 - 22-08-2026";
+const HARD_LIMIT = 1500;
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { password?: unknown };
